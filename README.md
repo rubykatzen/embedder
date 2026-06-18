@@ -202,30 +202,32 @@ Repositories can then rely on normal CI and automerge rules.
 
 ## Release Process
 
-Embedder uses the same release branch flow as `rubykatzen/releaser`.
-
-With `releaser` installed, cut a release with:
-
-```bash
-releaser cut 0.1.0
-```
-
-Or prepare a release branch manually by dispatching:
+Embedder releases are cut with the
+[rubykatzen/releaser](https://github.com/rubykatzen/releaser) CLI. Run from
+inside this repository:
 
 ```bash
-gh workflow run prepare-release.yml \
-  --field version=0.1.0 \
-  --field base_sha="$(git rev-parse origin/main)"
+releaser patch   # or: releaser minor / releaser major
 ```
 
-The workflow verifies that `main` has not moved, checks that CI is green, creates
-`release/v0.1.0`, updates `CHANGELOG.md`, bumps `pyproject.toml`, and pushes the
-release branch.
+The CLI verifies that CI is green on `origin/main`, calculates the next version,
+dispatches `prepare-release.yml`, watches it run, then opens a `release/vX.Y.Z`
+PR and enables auto-merge. `publish-release.yml` fires automatically once the PR
+merges and creates the annotated tag, GitHub Release, and fragment release
+assets using `.github/actions/upload-fragments`.
 
-When using the manual workflow dispatch, open and merge a pull request from the
-release branch. After it merges into `main`, `publish-release.yml` creates the
-annotated tag, GitHub Release, and fragment release assets using
-`.github/actions/upload-fragments`.
+Check release readiness without triggering anything:
+
+```bash
+releaser status
+releaser patch --dry-run
+```
+
+Install the CLI:
+
+```bash
+brew tap rubykatzen/tap && brew install releaser
+```
 
 ## Design Constraints
 
