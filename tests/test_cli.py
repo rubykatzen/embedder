@@ -1,0 +1,47 @@
+from pathlib import Path
+
+from embedder.cli import ExitCode, main
+from tests.helpers import close_marker, marker
+
+
+def test_scan_prints_blocks(tmp_path: Path, capsys) -> None:
+    target = tmp_path / "AGENTS.md"
+    target.write_text(
+        "\n".join(
+            [
+                "# AGENTS.md",
+                "",
+                marker("github.com/rubykatzen/embedder@v0.1.0:snippet.md"),
+                "managed",
+                close_marker(),
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    assert main(["scan", str(tmp_path)]) == int(ExitCode.OK)
+
+    captured = capsys.readouterr()
+    assert "AGENTS.md:3 rubykatzen/embedder@v0.1.0:snippet.md" in captured.out
+
+
+def test_scan_json(tmp_path: Path, capsys) -> None:
+    target = tmp_path / "README.md"
+    target.write_text(
+        "\n".join(
+            [
+                marker("github.com/rubykatzen/embedder@v0.1.0:snippet.md"),
+                "managed",
+                close_marker(),
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    assert main(["scan", "--json", str(target)]) == int(ExitCode.OK)
+
+    captured = capsys.readouterr()
+    assert '"blocks"' in captured.out
+    assert '"asset": "snippet.md"' in captured.out
