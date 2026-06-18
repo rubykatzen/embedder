@@ -54,7 +54,8 @@ The marker means:
 
 - `github.com/OWNER/REPO` is the snippet source repository.
 - `v0.3.0` is the currently pinned GitHub Release tag.
-- `ASSET.md` is the release asset to embed.
+- `ASSET.md` is the release asset to embed. Asset names must be basenames, not
+  nested paths.
 
 The closing marker is always:
 
@@ -85,6 +86,9 @@ published release assets are the external contract consumed by Embedder.
 
 Embedder always updates to the latest GitHub Release.
 
+GitHub prereleases are not considered latest releases by the MVP implementation.
+Publish snippets as normal GitHub Releases when consumers should receive them.
+
 SemVer tags such as `v0.3.0` are allowed for consistency with existing release
 tooling, but Embedder does not implement major/minor/patch update strategies or
 version constraints.
@@ -104,12 +108,19 @@ organization-specific agent policies in private repositories.
 
 ## CLI
 
-Planned commands:
+Install from the repository checkout:
+
+```bash
+pip install -e .
+```
+
+Commands:
 
 ```bash
 embedder scan
 embedder check
 embedder update
+embedder doctor
 ```
 
 `embedder scan` finds all managed blocks in text files and prints their source,
@@ -120,6 +131,15 @@ non-zero when updates are available.
 
 `embedder update` downloads the latest release asset for each managed block,
 updates the marker tag, and replaces only the managed body.
+
+`embedder doctor` checks local prerequisites such as GitHub CLI availability and
+authentication.
+
+All commands that inspect or change managed blocks accept optional file or
+directory paths. When no path is provided, Embedder scans the current directory.
+
+Use `--json` with `scan`, `check`, `update`, or `doctor` for machine-readable
+output.
 
 ## GitHub Actions
 
@@ -157,6 +177,32 @@ Pull requests should look like dependency update PRs:
 
 Repositories can then rely on normal CI and automerge rules.
 
+## Release Process
+
+Embedder uses the same release branch flow as `rubykatzen/releaser`.
+
+With `releaser` installed, cut a release with:
+
+```bash
+releaser cut 0.1.0
+```
+
+Or prepare a release branch manually by dispatching:
+
+```bash
+gh workflow run prepare-release.yml \
+  --field version=0.1.0 \
+  --field base_sha="$(git rev-parse origin/main)"
+```
+
+The workflow verifies that `main` has not moved, checks that CI is green, creates
+`release/v0.1.0`, updates `CHANGELOG.md`, bumps `pyproject.toml`, and pushes the
+release branch.
+
+When using the manual workflow dispatch, open and merge a pull request from the
+release branch. After it merges into `main`, `publish-release.yml` creates the
+annotated tag and GitHub Release.
+
 ## Design Constraints
 
 - Works with arbitrary text files, not only Markdown.
@@ -171,4 +217,5 @@ Repositories can then rely on normal CI and automerge rules.
 
 ## Status
 
-Design draft. No implementation yet.
+Initial implementation. The local CLI supports `scan`, `check`, `update`, and
+`doctor`. The reusable GitHub Actions workflow is still planned.
