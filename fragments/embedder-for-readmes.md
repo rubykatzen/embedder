@@ -1,4 +1,3 @@
-<!-- pyml disable-next-line MD041 -->
 ## Embedded Fragments
 
 This repository uses [Embedder](https://github.com/rubykatzen/embedder) to keep
