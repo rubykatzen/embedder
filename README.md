@@ -79,6 +79,17 @@ security-guidance.md
 fragments.yml
 ```
 
+Embedder publishes its own introductory fragments:
+
+```text
+embedder-for-readmes.md
+embedder-for-agents.md
+```
+
+These fragments explain managed blocks to people and coding agents. Consumers can
+embed them in README or `AGENTS.md` files to make the source-repository workflow
+explicit.
+
 The source repository may store and build these assets however it wants. The
 published release assets are the external contract consumed by Embedder.
 
@@ -201,7 +212,7 @@ release branch.
 
 When using the manual workflow dispatch, open and merge a pull request from the
 release branch. After it merges into `main`, `publish-release.yml` creates the
-annotated tag and GitHub Release.
+annotated tag, GitHub Release, and fragment release assets from `fragments/*.md`.
 
 ## Design Constraints
 
