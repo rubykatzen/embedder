@@ -13,8 +13,10 @@ class FakeGitHub:
         self.assets = {
             "github.com/rubykatzen/embedder@v0.2.0:snippet.md": "new managed text\n",
         }
+        self.latest_calls = 0
 
     def latest_tag(self, ref) -> str:
+        self.latest_calls += 1
         return self.latest[ref.repository]
 
     def download_asset(self, ref) -> str:
@@ -94,3 +96,23 @@ def test_apply_update_keeps_body_trailing_newline() -> None:
             "",
         ]
     )
+
+
+def test_check_blocks_caches_latest_release_per_repository() -> None:
+    text = "\n".join(
+        [
+            marker("github.com/rubykatzen/embedder@v0.1.0:first.md"),
+            "old",
+            close_marker(),
+            marker("github.com/rubykatzen/embedder@v0.1.0:second.md"),
+            "old",
+            close_marker(),
+            "",
+        ]
+    )
+    blocks = parse_blocks(Path("AGENTS.md"), text)
+    github = FakeGitHub()
+
+    check_blocks(blocks, github)
+
+    assert github.latest_calls == 1

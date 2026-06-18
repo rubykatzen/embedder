@@ -23,3 +23,8 @@ def test_ref_with_new_tag() -> None:
 def test_reject_invalid_ref() -> None:
     with pytest.raises(RefError):
         parse_ref("rubykatzen/embedder@v0.1.0:snippet.md")
+
+
+def test_reject_nested_asset_path() -> None:
+    with pytest.raises(RefError, match="basename"):
+        parse_ref("github.com/rubykatzen/embedder@v0.1.0:snippets/snippet.md")

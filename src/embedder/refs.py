@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-
 REF_RE = re.compile(
     r"^github\.com/"
     r"(?P<owner>[A-Za-z0-9_.-]+)/"
@@ -44,9 +43,12 @@ def parse_ref(raw: str) -> GitHubAssetRef:
     match = REF_RE.match(raw.strip())
     if not match:
         raise RefError(f"Invalid embedder ref: {raw}")
+    asset = match["asset"]
+    if "/" in asset or "\\" in asset:
+        raise RefError(f"Release asset must be a basename: {asset}")
     return GitHubAssetRef(
         owner=match["owner"],
         repo=match["repo"],
         tag=match["tag"],
-        asset=match["asset"],
+        asset=asset,
     )

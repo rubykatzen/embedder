@@ -6,7 +6,7 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from embedder.blocks import EmbedderError
+from embedder.blocks import EmbedderEnvironmentError, EmbedderError
 from embedder.refs import GitHubAssetRef
 
 
@@ -23,7 +23,7 @@ class GitHubClient:
 
     def require(self) -> None:
         if not self.available():
-            raise EmbedderError("Required executable is missing: gh")
+            raise EmbedderEnvironmentError("Required executable is missing: gh")
 
     def run(self, args: list[str], *, check: bool = True) -> CommandResult:
         self.require()

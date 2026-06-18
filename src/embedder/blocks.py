@@ -7,8 +7,7 @@ from pathlib import Path
 
 from embedder.refs import GitHubAssetRef, RefError, parse_ref
 
-
-OPEN_MARKER_RE = re.compile(r"^(?P<prefix>\s*)<!--\s+embedder\s+(?P<ref>\S+)\s+-->\s*$")
+OPEN_MARKER_RE = re.compile(r"^\s*<!--\s+embedder\s+(?P<ref>\S+)\s+-->\s*$")
 CLOSE_MARKER_RE = re.compile(r"^\s*<!--\s+/embedder\s+-->\s*$")
 FENCE_RE = re.compile(r"^\s*(?P<fence>`{3,}|~{3,})")
 SKIP_DIRS = {
@@ -26,6 +25,10 @@ SKIP_DIRS = {
 
 
 class EmbedderError(Exception):
+    pass
+
+
+class EmbedderEnvironmentError(EmbedderError):
     pass
 
 

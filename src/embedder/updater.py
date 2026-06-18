@@ -3,7 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from embedder.blocks import BlockUpdate, EmbedderBlock, EmbedderError, apply_updates, iter_files, parse_blocks
+from embedder.blocks import (
+    BlockUpdate,
+    EmbedderBlock,
+    apply_updates,
+    iter_files,
+    parse_blocks,
+)
 from embedder.github import GitHubClient
 
 
@@ -24,15 +30,14 @@ class FileUpdate:
 
 
 def check_blocks(blocks: list[EmbedderBlock], github: GitHubClient) -> list[CheckResult]:
-    latest_by_source: dict[tuple[str, str], str] = {}
+    latest_by_repository: dict[str, str] = {}
     results: list[CheckResult] = []
 
     for block in blocks:
-        key = (block.ref.repository, block.ref.asset)
-        latest = latest_by_source.get(key)
+        latest = latest_by_repository.get(block.ref.repository)
         if latest is None:
             latest = github.latest_tag(block.ref)
-            latest_by_source[key] = latest
+            latest_by_repository[block.ref.repository] = latest
         results.append(CheckResult(block=block, latest_tag=latest))
 
     return results
@@ -73,9 +78,3 @@ def update_files(paths: list[Path], github: GitHubClient) -> list[FileUpdate]:
         changed.append(FileUpdate(path=str(path), changed_blocks=changed_checks))
 
     return changed
-
-
-def require_files_only(paths: list[Path]) -> None:
-    for path in paths:
-        if not path.exists():
-            raise EmbedderError(f"Path does not exist: {path}")

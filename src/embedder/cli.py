@@ -9,7 +9,12 @@ from pathlib import Path
 from typing import Any
 
 from embedder import __version__
-from embedder.blocks import EmbedderBlock, EmbedderError, scan_paths
+from embedder.blocks import (
+    EmbedderBlock,
+    EmbedderEnvironmentError,
+    EmbedderError,
+    scan_paths,
+)
 from embedder.github import GitHubClient
 from embedder.updater import check_blocks, update_files
 
@@ -17,7 +22,6 @@ from embedder.updater import check_blocks, update_files
 class ExitCode(IntEnum):
     OK = 0
     UPDATES_AVAILABLE = 1
-    USAGE = 2
     ENVIRONMENT = 3
     COMMAND_FAILED = 4
 
@@ -162,6 +166,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     try:
         return int(args.func(args))
+    except EmbedderEnvironmentError as error:
+        print(str(error), file=sys.stderr)
+        return int(ExitCode.ENVIRONMENT)
     except EmbedderError as error:
         print(str(error), file=sys.stderr)
         return int(ExitCode.COMMAND_FAILED)
