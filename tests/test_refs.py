@@ -15,16 +15,16 @@ def test_parse_ref() -> None:
 
 
 def test_ref_with_new_tag() -> None:
-    ref = parse_ref("github.com/rubykatzen/embedder@v0.1.0:snippet.md")
+    ref = parse_ref("github.com/rubykatzen/embedder@v0.1.0:fragment.md")
 
-    assert ref.with_tag("v0.2.0").render() == "github.com/rubykatzen/embedder@v0.2.0:snippet.md"
+    assert ref.with_tag("v0.2.0").render() == "github.com/rubykatzen/embedder@v0.2.0:fragment.md"
 
 
 def test_reject_invalid_ref() -> None:
     with pytest.raises(RefError):
-        parse_ref("rubykatzen/embedder@v0.1.0:snippet.md")
+        parse_ref("rubykatzen/embedder@v0.1.0:fragment.md")
 
 
 def test_reject_nested_asset_path() -> None:
     with pytest.raises(RefError, match="basename"):
-        parse_ref("github.com/rubykatzen/embedder@v0.1.0:snippets/snippet.md")
+        parse_ref("github.com/rubykatzen/embedder@v0.1.0:fragments/fragment.md")

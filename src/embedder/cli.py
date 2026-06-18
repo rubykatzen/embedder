@@ -120,7 +120,7 @@ def command_doctor(args: argparse.Namespace) -> int:
 def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(
         prog="embedder",
-        description="Dependency-style updater for embedded text snippets.",
+        description="Dependency-style updater for embedded text fragments.",
     )
     root.add_argument("-v", "--version", action="version", version=f"embedder {__version__}")
     subparsers = root.add_subparsers(dest="command", required=True)

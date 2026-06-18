@@ -1,6 +1,6 @@
 # Embedder
 
-Embedder is a dependency-style updater for embedded text snippets.
+Embedder is a dependency-style updater for embedded text fragments.
 
 It is meant for shared instructions, policies, documentation fragments, and
 other text blocks that must be materialized inside many repositories while still
@@ -8,18 +8,18 @@ having one upstream source of truth.
 
 The core use case is agent instructions such as shared `AGENTS.md` sections:
 the consuming repository keeps a local copy that agents can read without network
-access, and Embedder periodically opens pull requests when the upstream snippet
+access, and Embedder periodically opens pull requests when the upstream fragment
 changes.
 
 ## Model
 
-Embedder treats a managed block inside any text file as a dependency.
+Embedder treats a fragment embedded inside any text file as a dependency.
 
 ```text
 consumer text file
   contains embedded block marker
     points to GitHub repository + release tag + release asset
-      Embedder downloads latest release asset
+      Embedder downloads latest fragment asset
         replaces only the managed block body
           opens a pull request
 ```
@@ -52,7 +52,7 @@ repository name in square brackets:
 
 The marker means:
 
-- `github.com/OWNER/REPO` is the snippet source repository.
+- `github.com/OWNER/REPO` is the fragment source repository.
 - `v0.3.0` is the currently pinned GitHub Release tag.
 - `ASSET.md` is the release asset to embed. Asset names must be basenames, not
   nested paths.
@@ -68,7 +68,7 @@ update. Everything outside the markers is local to the consuming repository.
 
 ## Releases
 
-Snippet source repositories publish snippets as GitHub Release assets.
+Fragment source repositories publish fragments as GitHub Release assets.
 
 Assets do not need to be archives. A release may attach plain text files such as:
 
@@ -76,7 +76,7 @@ Assets do not need to be archives. A release may attach plain text files such as
 agent-message-prefix.md
 review-policy.md
 security-guidance.md
-snippets.yml
+fragments.yml
 ```
 
 The source repository may store and build these assets however it wants. The
@@ -87,21 +87,21 @@ published release assets are the external contract consumed by Embedder.
 Embedder always updates to the latest GitHub Release.
 
 GitHub prereleases are not considered latest releases by the MVP implementation.
-Publish snippets as normal GitHub Releases when consumers should receive them.
+Publish fragments as normal GitHub Releases when consumers should receive them.
 
 SemVer tags such as `v0.3.0` are allowed for consistency with existing release
 tooling, but Embedder does not implement major/minor/patch update strategies or
 version constraints.
 
-If a snippet needs fundamentally different behavior, publish it as a different
+If a fragment needs fundamentally different behavior, publish it as a different
 asset name instead of relying on compatibility semantics.
 
 ## Private Sources
 
-Snippet sources may be public or private.
+Fragment sources may be public or private.
 
-Public source assets can be downloaded without authentication. Private source
-assets require a token with read access to the source repository.
+Public fragment assets can be downloaded without authentication. Private
+fragment assets require a token with read access to the source repository.
 
 This allows open source tooling in `rubykatzen/embedder` while keeping
 organization-specific agent policies in private repositories.
@@ -146,7 +146,7 @@ output.
 Embedder should provide a reusable workflow for consumers:
 
 ```yaml
-name: Update embedded snippets
+name: Update embedded fragments
 on:
   schedule:
     - cron: "0 3 * * *"
@@ -168,7 +168,7 @@ The workflow should:
 Pull requests should look like dependency update PRs:
 
 ```markdown
-## Embedded snippet updates
+## Embedded fragment updates
 
 | File | Source | Asset | Old | New |
 |---|---|---|---:|---:|
@@ -208,11 +208,11 @@ annotated tag and GitHub Release.
 - Works with arbitrary text files, not only Markdown.
 - Owns only explicitly marked blocks.
 - Uses GitHub Releases as the distribution mechanism.
-- Downloads release assets directly; snippets do not need to be zipped.
+- Downloads release assets directly; fragments do not need to be zipped.
 - Supports public and private source repositories.
 - Does not execute code from source repositories.
 - Does not perform dependency solving or SemVer compatibility filtering.
-- Keeps snippets materialized locally so agents can read them without network
+- Keeps fragments materialized locally so agents can read them without network
   access.
 
 ## Status
