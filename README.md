@@ -93,6 +93,18 @@ explicit.
 The source repository may store and build these assets however it wants. The
 published release assets are the external contract consumed by Embedder.
 
+Fragment source repositories can use the upload action to attach fragment assets
+to a GitHub Release:
+
+```yaml
+- uses: rubykatzen/embedder/.github/actions/upload-fragments@v0
+  with:
+    release-tag: v1.2.3
+    fragments-directory: fragments
+```
+
+`fragments-directory` defaults to `fragments`.
+
 ## Versioning
 
 Embedder always updates to the latest GitHub Release.
@@ -212,7 +224,8 @@ release branch.
 
 When using the manual workflow dispatch, open and merge a pull request from the
 release branch. After it merges into `main`, `publish-release.yml` creates the
-annotated tag, GitHub Release, and fragment release assets from `fragments/*.md`.
+annotated tag, GitHub Release, and fragment release assets using
+`.github/actions/upload-fragments`.
 
 ## Design Constraints
 

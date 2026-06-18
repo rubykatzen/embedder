@@ -22,10 +22,9 @@ jobs:
         with:
           version: ${{ steps.meta.outputs.version }}
           notes: ${{ steps.meta.outputs.notes }}
-      - name: Upload fragment assets
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release upload "v${{ steps.meta.outputs.version }}" fragments/*.md
+      - uses: ./.github/actions/upload-fragments
+        with:
+          release-tag: v${{ steps.meta.outputs.version }}
   update-tap:
     needs: publish
     runs-on: ubuntu-latest
