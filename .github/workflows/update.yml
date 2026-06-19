@@ -1,0 +1,79 @@
+name: Update embedded fragments
+
+on:
+  workflow_call:
+    inputs:
+      paths:
+        description: Files or directories to scan. Defaults to the current directory.
+        required: false
+        type: string
+        default: "."
+    secrets:
+      token:
+        description: GitHub token for accessing private fragment source repositories.
+        required: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Resolve embedder ref
+        id: embedder-ref
+        run: |
+          ref="${{ github.workflow_ref }}"
+          echo "ref=${ref##*@}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install embedder
+        run: pip install "git+https://github.com/rubykatzen/embedder.git@${{ steps.embedder-ref.outputs.ref }}"
+
+      - name: Run embedder update
+        env:
+          GH_TOKEN: ${{ secrets.token || github.token }}
+        run: embedder update ${{ inputs.paths }} --json > /tmp/embedder-result.json
+
+      - name: Detect changes
+        id: diff
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open pull request
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch="embedder/update-fragments"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add -A
+          git commit -m "chore: update embedded fragments"
+          git push origin "$branch" --force
+
+          body=$(jq -r '
+            "## Embedded fragment updates\n\n| File | Source | Asset | Old | New |\n|---|---|---|---:|---:|\n" +
+            ([.changed[] | .changed_blocks[] |
+              "| \(.block.path) | \(.block.ref.owner)/\(.block.ref.repo) | \(.block.ref.asset) | \(.block.ref.tag) | \(.latest_tag) |"
+            ] | join("\n"))
+          ' /tmp/embedder-result.json)
+
+          existing=$(gh pr list --head "$branch" --json number --jq '.[0].number // empty')
+          if [ -z "$existing" ]; then
+            gh pr create \
+              --title "chore: update embedded fragments" \
+              --body "$body" \
+              --head "$branch"
+          fi
