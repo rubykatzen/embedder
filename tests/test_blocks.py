@@ -10,7 +10,7 @@ def test_parse_single_block() -> None:
     text = "\n".join(
         [
             "before",
-            marker("github.com/rubykatzen/embedder@v0.1.0:snippet.md"),
+            marker("github.com/rubykatzen/embedder@v0.1.0:fragment.md"),
             "managed",
             "text",
             close_marker(),
@@ -29,7 +29,7 @@ def test_parse_single_block() -> None:
     assert block.body == "managed\ntext\n"
     assert block.ref.repository == "rubykatzen/embedder"
     assert block.ref.tag == "v0.1.0"
-    assert block.ref.asset == "snippet.md"
+    assert block.ref.asset == "fragment.md"
 
 
 def test_parse_multiple_blocks() -> None:
@@ -55,7 +55,7 @@ def test_parse_multiple_blocks() -> None:
 
 
 def test_reject_unclosed_block() -> None:
-    text = marker("github.com/rubykatzen/embedder@v0.1.0:snippet.md") + "\n"
+    text = marker("github.com/rubykatzen/embedder@v0.1.0:fragment.md") + "\n"
 
     with pytest.raises(EmbedderError, match="unclosed"):
         parse_blocks(Path("AGENTS.md"), text)
@@ -84,7 +84,7 @@ def test_ignore_markers_inside_markdown_code_fence() -> None:
     text = "\n".join(
         [
             "```markdown",
-            marker("github.com/rubykatzen/embedder@v0.1.0:snippet.md"),
+            marker("github.com/rubykatzen/embedder@v0.1.0:fragment.md"),
             "managed",
             close_marker(),
             "```",

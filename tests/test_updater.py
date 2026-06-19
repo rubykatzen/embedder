@@ -11,7 +11,7 @@ class FakeGitHub:
             "rubykatzen/embedder": "v0.2.0",
         }
         self.assets = {
-            "github.com/rubykatzen/embedder@v0.2.0:snippet.md": "new managed text\n",
+            "github.com/rubykatzen/embedder@v0.2.0:fragment.md": "new managed text\n",
         }
         self.latest_calls = 0
 
@@ -26,7 +26,7 @@ class FakeGitHub:
 def test_check_blocks_marks_updates() -> None:
     text = "\n".join(
         [
-            marker("github.com/rubykatzen/embedder@v0.1.0:snippet.md"),
+            marker("github.com/rubykatzen/embedder@v0.1.0:fragment.md"),
             "old",
             close_marker(),
             "",
@@ -47,7 +47,7 @@ def test_update_files_replaces_only_managed_body(tmp_path: Path) -> None:
         "\n".join(
             [
                 "before",
-                marker("github.com/rubykatzen/embedder@v0.1.0:snippet.md"),
+                marker("github.com/rubykatzen/embedder@v0.1.0:fragment.md"),
                 "old managed text",
                 close_marker(),
                 "after",
@@ -63,7 +63,7 @@ def test_update_files_replaces_only_managed_body(tmp_path: Path) -> None:
     assert target.read_text(encoding="utf-8") == "\n".join(
         [
             "before",
-            marker("github.com/rubykatzen/embedder@v0.2.0:snippet.md"),
+            marker("github.com/rubykatzen/embedder@v0.2.0:fragment.md"),
             "new managed text",
             close_marker(),
             "after",
@@ -75,7 +75,7 @@ def test_update_files_replaces_only_managed_body(tmp_path: Path) -> None:
 def test_apply_update_keeps_body_trailing_newline() -> None:
     text = "\n".join(
         [
-            marker("github.com/rubykatzen/embedder@v0.1.0:snippet.md"),
+            marker("github.com/rubykatzen/embedder@v0.1.0:fragment.md"),
             "old",
             close_marker(),
             "",
@@ -90,7 +90,7 @@ def test_apply_update_keeps_body_trailing_newline() -> None:
 
     assert updated == "\n".join(
         [
-            marker("github.com/rubykatzen/embedder@v0.2.0:snippet.md"),
+            marker("github.com/rubykatzen/embedder@v0.2.0:fragment.md"),
             "new",
             close_marker(),
             "",

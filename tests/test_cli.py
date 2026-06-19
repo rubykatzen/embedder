@@ -11,7 +11,7 @@ def test_scan_prints_blocks(tmp_path: Path, capsys) -> None:
             [
                 "# AGENTS.md",
                 "",
-                marker("github.com/rubykatzen/embedder@v0.1.0:snippet.md"),
+                marker("github.com/rubykatzen/embedder@v0.1.0:fragment.md"),
                 "managed",
                 close_marker(),
                 "",
@@ -23,7 +23,7 @@ def test_scan_prints_blocks(tmp_path: Path, capsys) -> None:
     assert main(["scan", str(tmp_path)]) == int(ExitCode.OK)
 
     captured = capsys.readouterr()
-    assert "AGENTS.md:3 rubykatzen/embedder@v0.1.0:snippet.md" in captured.out
+    assert "AGENTS.md:3 rubykatzen/embedder@v0.1.0:fragment.md" in captured.out
 
 
 def test_scan_json(tmp_path: Path, capsys) -> None:
@@ -31,7 +31,7 @@ def test_scan_json(tmp_path: Path, capsys) -> None:
     target.write_text(
         "\n".join(
             [
-                marker("github.com/rubykatzen/embedder@v0.1.0:snippet.md"),
+                marker("github.com/rubykatzen/embedder@v0.1.0:fragment.md"),
                 "managed",
                 close_marker(),
                 "",
@@ -44,7 +44,7 @@ def test_scan_json(tmp_path: Path, capsys) -> None:
 
     captured = capsys.readouterr()
     assert '"blocks"' in captured.out
-    assert '"asset": "snippet.md"' in captured.out
+    assert '"asset": "fragment.md"' in captured.out
 
 
 def test_check_missing_gh_returns_environment_error(
@@ -56,7 +56,7 @@ def test_check_missing_gh_returns_environment_error(
     target.write_text(
         "\n".join(
             [
-                marker("github.com/rubykatzen/embedder@v0.1.0:snippet.md"),
+                marker("github.com/rubykatzen/embedder@v0.1.0:fragment.md"),
                 "managed",
                 close_marker(),
                 "",

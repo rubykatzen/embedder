@@ -22,6 +22,9 @@ jobs:
         with:
           version: ${{ steps.meta.outputs.version }}
           notes: ${{ steps.meta.outputs.notes }}
+      - uses: ./.github/actions/upload-fragments
+        with:
+          release-tag: v${{ steps.meta.outputs.version }}
   update-tap:
     needs: publish
     runs-on: ubuntu-latest

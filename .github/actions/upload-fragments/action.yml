@@ -1,0 +1,47 @@
+name: Upload fragment assets
+description: Upload fragment files from a directory to a GitHub Release.
+inputs:
+  release-tag:
+    description: GitHub Release tag to upload assets to.
+    required: true
+  fragments-directory:
+    description: Directory containing fragment assets.
+    required: false
+    default: fragments
+  clobber:
+    description: Replace existing release assets with the same names.
+    required: false
+    default: "true"
+  token:
+    description: GitHub token.
+    required: false
+    default: ${{ github.token }}
+runs:
+  using: composite
+  steps:
+    - name: Upload fragments
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        RELEASE_TAG: ${{ inputs.release-tag }}
+        FRAGMENTS_DIRECTORY: ${{ inputs.fragments-directory }}
+        CLOBBER: ${{ inputs.clobber }}
+      run: |
+        set -euo pipefail
+        if [ ! -d "$FRAGMENTS_DIRECTORY" ]; then
+          echo "Fragments directory does not exist: $FRAGMENTS_DIRECTORY" >&2
+          exit 1
+        fi
+        assets=()
+        while IFS= read -r -d '' asset; do
+          assets+=("$asset")
+        done < <(find "$FRAGMENTS_DIRECTORY" -maxdepth 1 -type f -print0 | sort -z)
+        if [ "${#assets[@]}" -eq 0 ]; then
+          echo "No fragment assets found in $FRAGMENTS_DIRECTORY" >&2
+          exit 1
+        fi
+        args=("release" "upload" "$RELEASE_TAG")
+        if [ "$CLOBBER" = "true" ]; then
+          args+=("--clobber")
+        fi
+        gh "${args[@]}" "${assets[@]}"
