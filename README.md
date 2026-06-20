@@ -166,7 +166,8 @@ output.
 
 ## GitHub Actions
 
-Embedder should provide a reusable workflow for consumers:
+Add this workflow to the consuming repository to check for fragment updates
+daily and on demand:
 
 ```yaml
 name: Update embedded fragments
@@ -177,18 +178,10 @@ on:
 
 jobs:
   update:
-    uses: rubykatzen/embedder/.github/workflows/update.yml@v1
-    secrets: inherit
+    uses: rubykatzen/embedder/.github/workflows/update-fragments-shared.yml@v0
 ```
 
-The workflow should:
-
-1. Check out the consuming repository.
-2. Install or run the Embedder CLI.
-3. Run `embedder update`.
-4. Open a pull request if any managed blocks changed.
-
-Pull requests should look like dependency update PRs:
+When updates are available, Embedder opens a pull request:
 
 ```markdown
 ## Embedded fragment updates
@@ -198,7 +191,28 @@ Pull requests should look like dependency update PRs:
 | AGENTS.md | dupmachine/agent-guidelines | agent-message-prefix.md | v0.3.0 | v0.4.0 |
 ```
 
-Repositories can then rely on normal CI and automerge rules.
+Repositories can rely on normal CI and automerge rules to land these PRs
+automatically.
+
+Pass `paths` to limit the scan to specific files or directories:
+
+```yaml
+jobs:
+  update:
+    uses: rubykatzen/embedder/.github/workflows/update-fragments-shared.yml@v0
+    with:
+      paths: AGENTS.md docs/
+```
+
+Pass `token` to access fragments from private source repositories:
+
+```yaml
+jobs:
+  update:
+    uses: rubykatzen/embedder/.github/workflows/update-fragments-shared.yml@v0
+    secrets:
+      token: ${{ secrets.FRAGMENT_SOURCE_TOKEN }}
+```
 
 ## Release Process
 
@@ -243,5 +257,6 @@ brew tap rubykatzen/tap && brew install releaser
 
 ## Status
 
-Initial implementation. The local CLI supports `scan`, `check`, `update`, and
-`doctor`. The reusable GitHub Actions workflow is still planned.
+The local CLI supports `scan`, `check`, `update`, and `doctor`. The reusable
+GitHub Actions workflow is available at
+`.github/workflows/update-fragments-shared.yml`.
