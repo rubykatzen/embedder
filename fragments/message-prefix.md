@@ -1,4 +1,3 @@
-
 ## Message Prefix
 
 Prefix every user-visible agent message with the agent emoji followed by the
