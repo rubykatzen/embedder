@@ -39,3 +39,5 @@ jobs:
             --repo rubykatzen/homebrew-tap \
             --field project=embedder \
             --field version="${version}"
+          gh workflow run update-fragments.yml \
+            --repo rubykatzen/homebrew-tap
