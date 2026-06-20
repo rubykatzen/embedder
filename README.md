@@ -178,7 +178,7 @@ on:
 
 jobs:
   update:
-    uses: rubykatzen/embedder/.github/workflows/update.yml@v0
+    uses: rubykatzen/embedder/.github/workflows/update-fragments.yml@v0
 ```
 
 When updates are available, Embedder opens a pull request:
@@ -199,7 +199,7 @@ Pass `paths` to limit the scan to specific files or directories:
 ```yaml
 jobs:
   update:
-    uses: rubykatzen/embedder/.github/workflows/update.yml@v0
+    uses: rubykatzen/embedder/.github/workflows/update-fragments.yml@v0
     with:
       paths: AGENTS.md docs/
 ```
@@ -209,7 +209,7 @@ Pass `token` to access fragments from private source repositories:
 ```yaml
 jobs:
   update:
-    uses: rubykatzen/embedder/.github/workflows/update.yml@v0
+    uses: rubykatzen/embedder/.github/workflows/update-fragments.yml@v0
     secrets:
       token: ${{ secrets.FRAGMENT_SOURCE_TOKEN }}
 ```
@@ -259,4 +259,4 @@ brew tap rubykatzen/tap && brew install releaser
 
 The local CLI supports `scan`, `check`, `update`, and `doctor`. The reusable
 GitHub Actions workflow is available at
-`.github/workflows/update.yml`.
+`.github/workflows/update-fragments.yml`.
