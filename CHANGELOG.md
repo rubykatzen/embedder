@@ -1,5 +1,12 @@
 # Changelog
 
+## [v0.0.4] - 2026-06-20
+
+- feat: add GitHub Copilot to message-prefix agent list
+- chore: bump baseline to v0.6.2, remove MD022 workaround blank lines
+- fix: add blank line after embedder marker to satisfy MD022
+- feat: add message-prefix fragment and embed in AGENTS.md
+
 ## [v0.0.3] - 2026-06-20
 
 - fix: remove blank lines to pass yamllint
