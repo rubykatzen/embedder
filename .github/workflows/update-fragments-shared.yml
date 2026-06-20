@@ -1,5 +1,4 @@
 name: Update embedded fragments
-
 on:
   workflow_call:
     inputs:
@@ -12,7 +11,6 @@ on:
       token:
         description: GitHub token for accessing private fragment source repositories.
         required: false
-
 jobs:
   update:
     runs-on: ubuntu-latest
