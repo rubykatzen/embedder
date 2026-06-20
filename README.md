@@ -179,7 +179,6 @@ on:
 jobs:
   update:
     uses: rubykatzen/embedder/.github/workflows/update.yml@v0
-    secrets: inherit
 ```
 
 When updates are available, Embedder opens a pull request:
@@ -203,7 +202,6 @@ jobs:
     uses: rubykatzen/embedder/.github/workflows/update.yml@v0
     with:
       paths: AGENTS.md docs/
-    secrets: inherit
 ```
 
 Pass `token` to access fragments from private source repositories:
