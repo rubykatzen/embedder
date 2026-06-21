@@ -3,8 +3,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from embedder.formats.text import TextFormat
-
+OPEN_RE = re.compile(r"^\s*<!--\s+embedder\s+(?P<ref>\S+)\s+-->\s*$")
+CLOSE_RE = re.compile(r"^\s*<!--\s+/embedder\s+-->\s*$")
 FENCE_RE = re.compile(r"^\s*(?P<fence>`{3,}|~{3,})")
 
 
@@ -24,9 +24,23 @@ class _MarkdownScanner:
         return self._fence is not None
 
 
-class MarkdownFormat(TextFormat):
+class MarkdownFormat:
+    @property
+    def open_re(self) -> re.Pattern[str]:
+        return OPEN_RE
+
+    @property
+    def close_re(self) -> re.Pattern[str]:
+        return CLOSE_RE
+
     def matches(self, path: Path) -> bool:
         return path.suffix.lower() in {".md", ".markdown"}
 
     def make_scanner(self) -> _MarkdownScanner:
         return _MarkdownScanner()
+
+    def render_open(self, ref_str: str) -> str:
+        return f"<!-- embedder {ref_str} -->"
+
+    def render_close(self) -> str:
+        return "<!-- /embedder -->"

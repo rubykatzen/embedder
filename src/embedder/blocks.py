@@ -49,6 +49,8 @@ def parse_blocks(path: Path, text: str) -> list[EmbedderBlock]:
     from embedder.providers import parse_ref
 
     fmt = get_format(path)
+    if fmt is None:
+        return []
     scanner = fmt.make_scanner()
     lines = text.splitlines(keepends=True)
     blocks: list[EmbedderBlock] = []
@@ -143,6 +145,8 @@ def apply_updates(path: Path, text: str, updates: list[BlockUpdate]) -> str:
         return text
 
     fmt = get_format(path)
+    if fmt is None:
+        return text
     lines = text.splitlines(keepends=True)
     output: list[str] = []
     cursor = 0
