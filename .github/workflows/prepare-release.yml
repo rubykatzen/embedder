@@ -18,7 +18,6 @@ jobs:
     permissions:
       contents: write
       actions: read
-      workflows: write  # actionlint:ignore:permissions
     steps:
       - uses: actions/checkout@v7
         with:
@@ -40,9 +39,9 @@ jobs:
       - uses: rubykatzen/releaser/.github/actions/bump-pyproject-version@v0.5.0
         with:
           version: ${{ inputs.version }}
-      - uses: ./.github/actions/bump-shared-workflow-version
-        with:
-          version: ${{ inputs.version }}
+      # - uses: ./.github/actions/bump-shared-workflow-version
+      #   with:
+      #     version: ${{ inputs.version }}
       - uses: ./.github/actions/refresh-local-fragments
       - uses: rubykatzen/releaser/.github/actions/push-release-branch@v0.5.0
         with:
