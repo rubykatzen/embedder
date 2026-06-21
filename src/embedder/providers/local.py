@@ -45,5 +45,5 @@ class LocalProvider:
             raise EmbedderError(f"Local fragment not found: {target}")
         return target.read_text(encoding="utf-8")
 
-    def cache_key(self, ref: LocalRef) -> None:
+    def cache_key(self, ref: LocalRef) -> str | None:
         return None

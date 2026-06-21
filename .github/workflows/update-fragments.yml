@@ -43,7 +43,7 @@ jobs:
           body=$(jq -r '
             "## Embedded fragment updates\n\n| File | Ref | Old | New |\n|---|---|---:|---:|\n" +
             ([.changed[] | .changed_blocks[] |
-              "| \(.block.path) | \(.block.ref.render // .block.ref.path // (.block.ref.owner + "/" + .block.ref.repo + ":" + .block.ref.asset)) | \(.block.ref.tag // "current") | \(.latest_ref.tag // "current") |"
+              "| \(.block.path) | \(if .block.ref.owner then "github.com/\(.block.ref.owner)/\(.block.ref.repo)@\(.block.ref.tag):\(.block.ref.asset)" else "local:\(.block.ref.path)" end) | \(.block.ref.tag // "current") | \(.latest_ref.tag // "current") |"
             ] | join("\n"))
           ' /tmp/embedder-result.json)
           existing=$(gh pr list --head "$branch" --json number --jq '.[0].number // empty')

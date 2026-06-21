@@ -7,15 +7,15 @@ from embedder.formats.markdown import MarkdownFormat
 from embedder.formats.text import TextFormat
 from embedder.formats.yaml import YamlFormat
 
-_FORMATS: list[Format] = [
+_SPECIFIC_FORMATS: list[Format] = [
     MarkdownFormat(),
     YamlFormat(),
-    TextFormat(),
 ]
+_FALLBACK: Format = TextFormat()
 
 
 def get_format(path: Path) -> Format:
-    for fmt in _FORMATS:
+    for fmt in _SPECIFIC_FORMATS:
         if fmt.matches(path):
             return fmt
-    return TextFormat()
+    return _FALLBACK

@@ -147,6 +147,32 @@ def test_yaml_ignores_markers_after_blank_line_in_block_scalar() -> None:
     assert parse_blocks(Path("config.yaml"), text) == []
 
 
+def test_yaml_ignores_markers_in_block_scalar_with_indent_indicator() -> None:
+    text = "\n".join(
+        [
+            "description: |2",
+            f"  {yaml_marker('local:file.yaml')}",
+            "other: value",
+            "",
+        ]
+    )
+
+    assert parse_blocks(Path("config.yaml"), text) == []
+
+
+def test_yaml_ignores_markers_in_block_scalar_with_trailing_comment() -> None:
+    text = "\n".join(
+        [
+            "description: | # inline comment",
+            f"  {yaml_marker('local:file.yaml')}",
+            "other: value",
+            "",
+        ]
+    )
+
+    assert parse_blocks(Path("config.yaml"), text) == []
+
+
 def test_parse_local_ref_in_markdown() -> None:
     text = "\n".join(
         [

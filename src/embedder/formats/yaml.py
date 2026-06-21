@@ -6,8 +6,10 @@ from pathlib import Path
 OPEN_RE = re.compile(r"^\s*#\s+embedder\s+(?P<ref>\S+)\s*$")
 CLOSE_RE = re.compile(r"^\s*#\s+/embedder\s*$")
 
-# Matches the start of a block scalar (key: | or key: >), capturing indentation level.
-_BLOCK_SCALAR_RE = re.compile(r"^(?P<indent>\s*)\S.*:\s*[|>][+-]?\s*$")
+# Matches YAML block scalar headers: key: |, key: |2, key: |-2, key: | # note, etc.
+# Per YAML spec, after | or > comes an optional indentation indicator (digit),
+# optional chomp indicator (+/-), and an optional trailing comment.
+_BLOCK_SCALAR_RE = re.compile(r"^(?P<indent>\s*)\S.*:\s*[|>][0-9]?[+-]?[0-9]?(?:\s+#.*)?\s*$")
 
 
 class _YamlScanner:
