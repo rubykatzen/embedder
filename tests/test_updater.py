@@ -2,10 +2,11 @@ from pathlib import Path
 
 import pytest
 
-from embedder.blocks import BlockUpdate, EmbedderError, parse_blocks
-from embedder.providers import ProviderRegistry
+from embedder.blocks import BlockUpdate, parse_blocks
+from embedder.errors import EmbedderError
+from embedder.providers import Provider
+from embedder.providers.github import GitHubAssetRef, parse_github_ref
 from embedder.providers.local import LocalProvider, LocalRef
-from embedder.refs import GitHubAssetRef, parse_github_ref
 from embedder.updater import check_blocks, update_files
 from tests.helpers import close_marker, marker
 
@@ -41,8 +42,8 @@ class FakeGitHubProvider:
         return ref.repository
 
 
-def fake_registry(**kwargs) -> ProviderRegistry:
-    return ProviderRegistry([FakeGitHubProvider(**kwargs) if kwargs else FakeGitHubProvider(), LocalProvider()])
+def fake_providers() -> list[Provider]:
+    return [FakeGitHubProvider(), LocalProvider()]
 
 
 def test_check_blocks_marks_updates() -> None:
@@ -56,7 +57,7 @@ def test_check_blocks_marks_updates() -> None:
     )
     blocks = parse_blocks(Path("AGENTS.md"), text)
 
-    results = check_blocks(blocks, fake_registry())
+    results = check_blocks(blocks, fake_providers())
 
     assert len(results) == 1
     assert results[0].latest_ref.render() == "github.com/rubykatzen/embedder@v0.2.0:fragment.md"
@@ -79,7 +80,7 @@ def test_update_files_replaces_only_managed_body(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    changed = update_files([tmp_path], fake_registry())
+    changed = update_files([tmp_path], fake_providers())
 
     assert [item.path for item in changed] == [str(target)]
     assert target.read_text(encoding="utf-8") == "\n".join(
@@ -138,9 +139,8 @@ def test_check_blocks_caches_resolve_per_repository() -> None:
     )
     blocks = parse_blocks(Path("AGENTS.md"), text)
     provider = FakeGitHubProvider()
-    registry = ProviderRegistry([provider, LocalProvider()])
 
-    check_blocks(blocks, registry)
+    check_blocks(blocks, [provider, LocalProvider()])
 
     assert provider.resolve_calls == 1
 
@@ -162,7 +162,7 @@ def test_local_ref_is_always_current(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    registry = ProviderRegistry([FakeGitHubProvider(), LocalProvider()])
+    registry = [FakeGitHubProvider(), LocalProvider()]
     results = check_blocks(parse_blocks(target, target.read_text(encoding="utf-8")), registry)
 
     assert not results[0].update_available
@@ -192,7 +192,7 @@ def test_cache_uses_correct_asset_per_block() -> None:
         ]
     )
     blocks = parse_blocks(Path("AGENTS.md"), text)
-    registry = ProviderRegistry([FakeGitHubProvider(), LocalProvider()])
+    registry = [FakeGitHubProvider(), LocalProvider()]
 
     results = check_blocks(blocks, registry)
 
@@ -212,7 +212,7 @@ def test_local_ref_body_refreshed_on_update(tmp_path: Path) -> None:
     )
 
     fragment.write_text("v2 content\n", encoding="utf-8")
-    registry = ProviderRegistry([FakeGitHubProvider(), LocalProvider()])
+    registry = [FakeGitHubProvider(), LocalProvider()]
     update_files([tmp_path], registry)
 
     assert "v2 content" in target.read_text(encoding="utf-8")

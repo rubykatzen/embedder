@@ -1,29 +1,41 @@
 from __future__ import annotations
 
-from embedder.providers.base import Provider
-from embedder.providers.github import GitHubProvider
+from pathlib import Path
+from typing import Protocol, runtime_checkable
+
+from embedder.errors import RefError
+from embedder.providers.github import GitHubAssetRef, GitHubProvider
 from embedder.providers.local import LocalProvider, LocalRef
-from embedder.refs import GitHubAssetRef, RefError
 
 AnyRef = GitHubAssetRef | LocalRef
 
 
-class ProviderRegistry:
-    def __init__(self, providers: list[Provider]) -> None:
-        self._providers = providers
+@runtime_checkable
+class Provider(Protocol):
+    def matches(self, raw: str) -> bool: ...
 
-    def get(self, raw: str) -> Provider:
-        for provider in self._providers:
-            if provider.matches(raw):
-                return provider
-        raise RefError(f"Unknown ref scheme: {raw!r}")
+    def parse_ref(self, raw: str) -> AnyRef: ...
 
-    def parse_ref(self, raw: str) -> AnyRef:
-        return self.get(raw).parse_ref(raw)
+    def resolve(self, ref: AnyRef) -> AnyRef: ...
+
+    def resolve_cached(self, ref: AnyRef, cached: AnyRef) -> AnyRef: ...
+
+    def always_refresh(self, ref: AnyRef) -> bool: ...
+
+    def fetch(self, ref: AnyRef, base_dir: Path) -> str: ...
+
+    def cache_key(self, ref: AnyRef) -> str | None: ...
 
 
-DEFAULT_REGISTRY = ProviderRegistry([GitHubProvider(), LocalProvider()])
+DEFAULT_PROVIDERS: list[Provider] = [GitHubProvider(), LocalProvider()]
+
+
+def get_provider(raw: str, providers: list[Provider] = DEFAULT_PROVIDERS) -> Provider:
+    for provider in providers:
+        if provider.matches(raw):
+            return provider
+    raise RefError(f"Unknown ref scheme: {raw!r}")
 
 
 def parse_ref(raw: str) -> AnyRef:
-    return DEFAULT_REGISTRY.parse_ref(raw)
+    return get_provider(raw).parse_ref(raw)

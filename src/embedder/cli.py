@@ -9,12 +9,8 @@ from pathlib import Path
 from typing import Any
 
 from embedder import __version__
-from embedder.blocks import (
-    EmbedderBlock,
-    EmbedderEnvironmentError,
-    EmbedderError,
-    scan_paths,
-)
+from embedder.blocks import EmbedderBlock, scan_paths
+from embedder.errors import EmbedderEnvironmentError, EmbedderError
 from embedder.providers.github import GitHubProvider
 from embedder.updater import check_blocks, update_files
 

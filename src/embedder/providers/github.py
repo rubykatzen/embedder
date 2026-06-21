@@ -1,13 +1,54 @@
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from embedder.blocks import EmbedderEnvironmentError, EmbedderError
-from embedder.refs import GitHubAssetRef, parse_github_ref
+from embedder.errors import EmbedderEnvironmentError, EmbedderError, RefError
+
+_REF_RE = re.compile(
+    r"^github\.com/"
+    r"(?P<owner>[A-Za-z0-9_.-]+)/"
+    r"(?P<repo>[A-Za-z0-9_.-]+)"
+    r"@(?P<tag>[^:\s]+)"
+    r":(?P<asset>[^\s]+)$"
+)
+
+
+@dataclass(frozen=True)
+class GitHubAssetRef:
+    owner: str
+    repo: str
+    tag: str
+    asset: str
+
+    @property
+    def repository(self) -> str:
+        return f"{self.owner}/{self.repo}"
+
+    def with_tag(self, tag: str) -> GitHubAssetRef:
+        return GitHubAssetRef(owner=self.owner, repo=self.repo, tag=tag, asset=self.asset)
+
+    def render(self) -> str:
+        return f"github.com/{self.repository}@{self.tag}:{self.asset}"
+
+
+def parse_github_ref(raw: str) -> GitHubAssetRef:
+    match = _REF_RE.match(raw.strip())
+    if not match:
+        raise RefError(f"Invalid embedder ref: {raw}")
+    asset = match["asset"]
+    if "/" in asset or "\\" in asset:
+        raise RefError(f"Release asset must be a basename: {asset}")
+    return GitHubAssetRef(
+        owner=match["owner"],
+        repo=match["repo"],
+        tag=match["tag"],
+        asset=asset,
+    )
 
 
 @dataclass(frozen=True)
@@ -68,16 +109,7 @@ class GitHubProvider:
 
     def _latest_tag(self, ref: GitHubAssetRef) -> str:
         result = self.run(
-            [
-                "release",
-                "view",
-                "--repo",
-                ref.repository,
-                "--json",
-                "tagName",
-                "--jq",
-                ".tagName",
-            ]
+            ["release", "view", "--repo", ref.repository, "--json", "tagName", "--jq", ".tagName"]
         )
         if not result.stdout or result.stdout == "null":
             raise EmbedderError(f"Could not resolve latest release for {ref.repository}")

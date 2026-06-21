@@ -4,7 +4,9 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from embedder.refs import RefError
+from embedder.errors import EmbedderEnvironmentError, EmbedderError, RefError
+from embedder.formats import get_format
+from embedder.providers import parse_ref
 
 SKIP_DIRS = {
     ".git",
@@ -18,14 +20,6 @@ SKIP_DIRS = {
     "node_modules",
     "vendor",
 }
-
-
-class EmbedderError(Exception):
-    pass
-
-
-class EmbedderEnvironmentError(EmbedderError):
-    pass
 
 
 @dataclass(frozen=True)
@@ -45,12 +39,10 @@ class BlockUpdate:
 
 
 def parse_blocks(path: Path, text: str) -> list[EmbedderBlock]:
-    from embedder.formats import get_format
-    from embedder.providers import parse_ref
-
     fmt = get_format(path)
     if fmt is None:
         return []
+
     scanner = fmt.make_scanner()
     lines = text.splitlines(keepends=True)
     blocks: list[EmbedderBlock] = []
@@ -139,14 +131,13 @@ def scan_paths(paths: list[Path]) -> list[EmbedderBlock]:
 
 
 def apply_updates(path: Path, text: str, updates: list[BlockUpdate]) -> str:
-    from embedder.formats import get_format
-
     if not updates:
         return text
 
     fmt = get_format(path)
     if fmt is None:
         return text
+
     lines = text.splitlines(keepends=True)
     output: list[str] = []
     cursor = 0
@@ -177,3 +168,15 @@ def apply_updates(path: Path, text: str, updates: list[BlockUpdate]) -> str:
 
     output.extend(lines[cursor:])
     return "".join(output)
+
+
+__all__ = [
+    "BlockUpdate",
+    "EmbedderBlock",
+    "EmbedderEnvironmentError",
+    "EmbedderError",
+    "apply_updates",
+    "iter_files",
+    "parse_blocks",
+    "scan_paths",
+]

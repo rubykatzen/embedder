@@ -3,8 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from embedder.blocks import EmbedderError
-from embedder.refs import RefError
+from embedder.errors import EmbedderError, RefError
 
 
 @dataclass(frozen=True)

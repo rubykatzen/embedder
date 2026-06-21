@@ -1,8 +1,9 @@
 import pytest
 
+from embedder.errors import RefError
 from embedder.providers import parse_ref
+from embedder.providers.github import GitHubAssetRef, parse_github_ref
 from embedder.providers.local import LocalRef
-from embedder.refs import GitHubAssetRef, RefError, parse_github_ref
 
 
 def test_parse_github_ref() -> None:

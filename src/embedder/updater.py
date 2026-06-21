@@ -10,7 +10,7 @@ from embedder.blocks import (
     iter_files,
     parse_blocks,
 )
-from embedder.providers import DEFAULT_REGISTRY, AnyRef, ProviderRegistry
+from embedder.providers import DEFAULT_PROVIDERS, AnyRef, Provider, get_provider
 
 
 @dataclass(frozen=True)
@@ -31,13 +31,13 @@ class FileUpdate:
 
 def check_blocks(
     blocks: list[EmbedderBlock],
-    registry: ProviderRegistry = DEFAULT_REGISTRY,
+    providers: list[Provider] = DEFAULT_PROVIDERS,
 ) -> list[CheckResult]:
     resolved_cache: dict[str, AnyRef] = {}
     results: list[CheckResult] = []
 
     for block in blocks:
-        provider = registry.get(block.ref.render())
+        provider = get_provider(block.ref.render(), providers)
         key = provider.cache_key(block.ref)
         if key is not None:
             if key in resolved_cache:
@@ -54,7 +54,7 @@ def check_blocks(
 
 def update_files(
     paths: list[Path],
-    registry: ProviderRegistry = DEFAULT_REGISTRY,
+    providers: list[Provider] = DEFAULT_PROVIDERS,
 ) -> list[FileUpdate]:
     changed: list[FileUpdate] = []
 
@@ -67,12 +67,12 @@ def update_files(
         if not blocks:
             continue
 
-        checks = check_blocks(blocks, registry)
+        checks = check_blocks(blocks, providers)
         updates: list[BlockUpdate] = []
         changed_checks: list[CheckResult] = []
 
         for check in checks:
-            provider = registry.get(check.block.ref.render())
+            provider = get_provider(check.block.ref.render(), providers)
             if not check.update_available and not provider.always_refresh(check.block.ref):
                 continue
             new_body = provider.fetch(check.latest_ref, path.parent)

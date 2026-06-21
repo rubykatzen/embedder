@@ -2,7 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from embedder.blocks import BlockUpdate, EmbedderError, apply_updates, parse_blocks
+from embedder.blocks import BlockUpdate, apply_updates, parse_blocks
+from embedder.errors import EmbedderError
 from tests.helpers import close_marker, marker, yaml_close_marker, yaml_marker
 
 
