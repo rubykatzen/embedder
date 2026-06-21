@@ -5,16 +5,9 @@ inputs:
     description: Files or directories to scan. Defaults to the current directory.
     required: false
     default: "."
-  python-version:
-    description: Python version to use.
-    required: false
-    default: "3.13"
 runs:
   using: composite
   steps:
-    - uses: actions/setup-python@v6
-      with:
-        python-version: ${{ inputs.python-version }}
     - name: Refresh local fragments
       shell: bash
       env:
