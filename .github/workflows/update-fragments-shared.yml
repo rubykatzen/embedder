@@ -23,7 +23,7 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install embedder
-        run: pip install "git+https://github.com/rubykatzen/embedder.git@$GITHUB_WORKFLOW_SHA"
+        run: pip install "git+https://github.com/rubykatzen/embedder.git@v0.0.5"
       - name: Run embedder update
         env:
           GH_TOKEN: ${{ secrets.token || github.token }}
