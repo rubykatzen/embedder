@@ -159,6 +159,11 @@ def apply_updates(path: Path, text: str, updates: list[BlockUpdate]) -> str:
         replacement_body = update.new_body
         if replacement_body and not replacement_body.endswith("\n"):
             replacement_body += "\n"
+        if indent and replacement_body:
+            replacement_body = "".join(
+                indent + line if line.rstrip("\n") else line
+                for line in replacement_body.splitlines(keepends=True)
+            )
 
         output.extend(lines[cursor:start])
         output.append(f"{indent}{fmt.render_open(update.new_ref.render())}{newline}")

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from embedder.blocks import EmbedderError, parse_blocks
+from embedder.blocks import BlockUpdate, EmbedderError, apply_updates, parse_blocks
 from tests.helpers import close_marker, marker, yaml_close_marker, yaml_marker
 
 
@@ -187,3 +187,33 @@ def test_parse_local_ref_in_markdown() -> None:
 
     assert len(blocks) == 1
     assert blocks[0].ref.render() == "local:fragments/file.md"
+
+
+def test_apply_updates_indents_body_to_match_yaml_marker() -> None:
+    text = "\n".join(
+        [
+            "parent:",
+            f"  {yaml_marker('local:frag.yaml')}",
+            "  old: value",
+            f"  {yaml_close_marker()}",
+            "",
+        ]
+    )
+    path = Path("config.yaml")
+    block = parse_blocks(path, text)[0]
+
+    updated = apply_updates(
+        path,
+        text,
+        [BlockUpdate(block=block, new_ref=block.ref, new_body="new: value\n")],
+    )
+
+    assert updated == "\n".join(
+        [
+            "parent:",
+            f"  {yaml_marker('local:frag.yaml')}",
+            "  new: value",
+            f"  {yaml_close_marker()}",
+            "",
+        ]
+    )
