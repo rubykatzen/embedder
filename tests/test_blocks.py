@@ -130,6 +130,23 @@ def test_yaml_ignores_markers_in_block_scalar() -> None:
     assert parse_blocks(Path("config.yaml"), text) == []
 
 
+def test_yaml_ignores_markers_after_blank_line_in_block_scalar() -> None:
+    text = "\n".join(
+        [
+            "description: |",
+            "  first paragraph",
+            "",
+            f"  {yaml_marker('local:file.yaml')}",
+            "  second paragraph",
+            f"  {yaml_close_marker()}",
+            "other: value",
+            "",
+        ]
+    )
+
+    assert parse_blocks(Path("config.yaml"), text) == []
+
+
 def test_parse_local_ref_in_markdown() -> None:
     text = "\n".join(
         [

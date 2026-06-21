@@ -28,8 +28,19 @@ class LocalProvider:
     def resolve(self, ref: LocalRef) -> LocalRef:
         return ref
 
+    def resolve_cached(self, ref: LocalRef, cached: LocalRef) -> LocalRef:
+        return ref
+
+    def always_refresh(self, ref: LocalRef) -> bool:
+        return True
+
     def fetch(self, ref: LocalRef, base_dir: Path) -> str:
+        resolved_base = base_dir.resolve()
         target = (base_dir / ref.path).resolve()
+        if not target.is_relative_to(resolved_base):
+            raise EmbedderError(
+                f"Local fragment path escapes base directory: {ref.path!r}"
+            )
         if not target.is_file():
             raise EmbedderError(f"Local fragment not found: {target}")
         return target.read_text(encoding="utf-8")

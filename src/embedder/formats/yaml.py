@@ -20,7 +20,10 @@ class _YamlScanner:
         stripped = line.rstrip("\n")
 
         if self._block_indent is not None:
-            if stripped and not stripped[0].isspace():
+            if not stripped:
+                # Blank lines are valid inside a block scalar.
+                return True
+            if not stripped[0].isspace():
                 self._block_indent = None
             elif len(stripped) - len(stripped.lstrip()) > self._block_indent:
                 return True

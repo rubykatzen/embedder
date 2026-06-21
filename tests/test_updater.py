@@ -1,6 +1,8 @@
 from pathlib import Path
 
-from embedder.blocks import BlockUpdate, parse_blocks
+import pytest
+
+from embedder.blocks import BlockUpdate, EmbedderError, parse_blocks
 from embedder.providers import ProviderRegistry
 from embedder.providers.local import LocalProvider, LocalRef
 from embedder.refs import GitHubAssetRef, parse_github_ref
@@ -25,6 +27,12 @@ class FakeGitHubProvider:
     def resolve(self, ref: GitHubAssetRef) -> GitHubAssetRef:
         self.resolve_calls += 1
         return ref.with_tag(self.latest[ref.repository])
+
+    def resolve_cached(self, ref: GitHubAssetRef, cached: GitHubAssetRef) -> GitHubAssetRef:
+        return ref.with_tag(cached.tag)
+
+    def always_refresh(self, ref: GitHubAssetRef) -> bool:
+        return False
 
     def fetch(self, ref: GitHubAssetRef, base_dir: Path) -> str:
         return self.assets[ref.render()]
@@ -168,3 +176,49 @@ def test_local_ref_fetch(tmp_path: Path) -> None:
     content = LocalProvider().fetch(ref, tmp_path)
 
     assert content == "hello from local\n"
+
+
+def test_cache_uses_correct_asset_per_block() -> None:
+    """Two blocks from the same repo must not share each other's asset."""
+    text = "\n".join(
+        [
+            marker("github.com/rubykatzen/embedder@v0.1.0:first.md"),
+            "old",
+            close_marker(),
+            marker("github.com/rubykatzen/embedder@v0.1.0:second.md"),
+            "old",
+            close_marker(),
+            "",
+        ]
+    )
+    blocks = parse_blocks(Path("AGENTS.md"), text)
+    registry = ProviderRegistry([FakeGitHubProvider(), LocalProvider()])
+
+    results = check_blocks(blocks, registry)
+
+    assert results[0].latest_ref.render() == "github.com/rubykatzen/embedder@v0.2.0:first.md"
+    assert results[1].latest_ref.render() == "github.com/rubykatzen/embedder@v0.2.0:second.md"
+
+
+def test_local_ref_body_refreshed_on_update(tmp_path: Path) -> None:
+    """update_files re-fetches local refs even when the ref itself hasn't changed."""
+    fragment = tmp_path / "frag.md"
+    fragment.write_text("v1 content\n", encoding="utf-8")
+
+    target = tmp_path / "README.md"
+    target.write_text(
+        "\n".join([marker("local:frag.md"), "old content", close_marker(), ""]),
+        encoding="utf-8",
+    )
+
+    fragment.write_text("v2 content\n", encoding="utf-8")
+    registry = ProviderRegistry([FakeGitHubProvider(), LocalProvider()])
+    update_files([tmp_path], registry)
+
+    assert "v2 content" in target.read_text(encoding="utf-8")
+
+
+def test_local_ref_path_traversal_rejected(tmp_path: Path) -> None:
+    ref = LocalRef(path="../../etc/passwd")
+    with pytest.raises(EmbedderError, match="escapes base directory"):
+        LocalProvider().fetch(ref, tmp_path)

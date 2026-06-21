@@ -33,17 +33,18 @@ def check_blocks(
     blocks: list[EmbedderBlock],
     registry: ProviderRegistry = DEFAULT_REGISTRY,
 ) -> list[CheckResult]:
-    cache: dict[str, AnyRef] = {}
+    resolved_cache: dict[str, AnyRef] = {}
     results: list[CheckResult] = []
 
     for block in blocks:
         provider = registry.get(block.ref.render())
         key = provider.cache_key(block.ref)
         if key is not None:
-            latest = cache.get(key)
-            if latest is None:
+            if key in resolved_cache:
+                latest = provider.resolve_cached(block.ref, resolved_cache[key])
+            else:
                 latest = provider.resolve(block.ref)
-                cache[key] = latest
+                resolved_cache[key] = latest
         else:
             latest = provider.resolve(block.ref)
         results.append(CheckResult(block=block, latest_ref=latest))
@@ -71,10 +72,12 @@ def update_files(
         changed_checks: list[CheckResult] = []
 
         for check in checks:
-            if not check.update_available:
+            provider = registry.get(check.block.ref.render())
+            if not check.update_available and not provider.always_refresh(check.block.ref):
                 continue
-            provider = registry.get(check.latest_ref.render())
             new_body = provider.fetch(check.latest_ref, path.parent)
+            if new_body == check.block.body and not check.update_available:
+                continue
             updates.append(
                 BlockUpdate(block=check.block, new_ref=check.latest_ref, new_body=new_body)
             )

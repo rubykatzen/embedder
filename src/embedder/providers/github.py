@@ -27,6 +27,12 @@ class GitHubProvider:
     def resolve(self, ref: GitHubAssetRef) -> GitHubAssetRef:
         return ref.with_tag(self._latest_tag(ref))
 
+    def resolve_cached(self, ref: GitHubAssetRef, cached: GitHubAssetRef) -> GitHubAssetRef:
+        return ref.with_tag(cached.tag)
+
+    def always_refresh(self, ref: GitHubAssetRef) -> bool:
+        return False
+
     def fetch(self, ref: GitHubAssetRef, base_dir: Path) -> str:
         return self._download_asset(ref)
 

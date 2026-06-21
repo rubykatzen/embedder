@@ -23,7 +23,7 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install embedder
-        run: pip install "git+https://github.com/rubykatzen/embedder.git@v0.0.5"
+        run: pip install "git+https://github.com/rubykatzen/embedder.git@v0.0.6"
       - name: Run embedder update
         env:
           GH_TOKEN: ${{ secrets.token || github.token }}
@@ -54,7 +54,7 @@ jobs:
           body=$(jq -r '
             "## Embedded fragment updates\n\n| File | Source | Asset | Old | New |\n|---|---|---|---:|---:|\n" +
             ([.changed[] | .changed_blocks[] |
-              "| \(.block.path) | \(.block.ref.owner)/\(.block.ref.repo) | \(.block.ref.asset) | \(.block.ref.tag) | \(.latest_ref.tag) |"
+              "| \(.block.path) | \(.block.ref.owner)/\(.block.ref.repo) | \(.block.ref.asset) | \(.block.ref.tag) | \(.latest_ref.tag // .latest_tag) |"
             ] | join("\n"))
           ' /tmp/embedder-result.json)
           existing=$(gh pr list --head "$branch" --json number --jq '.[0].number // empty')
