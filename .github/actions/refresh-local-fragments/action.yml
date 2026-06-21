@@ -1,0 +1,25 @@
+name: Refresh local fragments
+description: Re-embed all local: fragment refs in the workspace without bumping external dependencies.
+inputs:
+  paths:
+    description: Files or directories to scan. Defaults to the current directory.
+    required: false
+    default: "."
+  python-version:
+    description: Python version to use.
+    required: false
+    default: "3.13"
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v6
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Refresh local fragments
+      shell: bash
+      env:
+        EMBEDDER_PATHS: ${{ inputs.paths }}
+      run: |
+        pip install -e "${{ github.action_path }}/../../.."
+        read -ra paths <<< "$EMBEDDER_PATHS"
+        embedder update "${paths[@]}" --local-only
