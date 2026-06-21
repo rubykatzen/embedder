@@ -58,8 +58,10 @@ def update_files(
     providers: list[Provider] | None = None,
     *,
     local_only: bool = False,
+    base_dir: Path | None = None,
 ) -> list[FileUpdate]:
     _providers = providers if providers is not None else DEFAULT_PROVIDERS
+    _base_dir = base_dir if base_dir is not None else Path.cwd()
     changed: list[FileUpdate] = []
 
     for path in iter_files(paths):
@@ -83,7 +85,7 @@ def update_files(
                 continue
             if not check.update_available and not provider.always_refresh(check.block.ref):
                 continue
-            new_body = provider.fetch(check.latest_ref, path.parent)
+            new_body = provider.fetch(check.latest_ref, _base_dir)
             if new_body == check.block.body and not check.update_available:
                 continue
             updates.append(

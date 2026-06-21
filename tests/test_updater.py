@@ -80,7 +80,7 @@ def test_update_files_replaces_only_managed_body(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    changed = update_files([tmp_path], fake_providers())
+    changed = update_files([tmp_path], fake_providers(), base_dir=tmp_path)
 
     assert [item.path for item in changed] == [str(target)]
     assert target.read_text(encoding="utf-8") == "\n".join(
@@ -213,7 +213,7 @@ def test_local_ref_body_refreshed_on_update(tmp_path: Path) -> None:
 
     fragment.write_text("v2 content\n", encoding="utf-8")
     registry = [FakeGitHubProvider(), LocalProvider()]
-    update_files([tmp_path], registry)
+    update_files([tmp_path], registry, base_dir=tmp_path)
 
     assert "v2 content" in target.read_text(encoding="utf-8")
 
@@ -245,7 +245,7 @@ def test_local_only_skips_github_blocks(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    update_files([tmp_path], fake_providers(), local_only=True)
+    update_files([tmp_path], fake_providers(), local_only=True, base_dir=tmp_path)
 
     result = target.read_text(encoding="utf-8")
     assert "old github" in result
@@ -264,7 +264,7 @@ def test_local_only_does_not_call_github_resolve(tmp_path: Path) -> None:
     )
 
     provider = FakeGitHubProvider()
-    update_files([tmp_path], [provider, LocalProvider()], local_only=True)
+    update_files([tmp_path], [provider, LocalProvider()], local_only=True, base_dir=tmp_path)
 
     assert provider.resolve_calls == 0
 
