@@ -3,9 +3,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from embedder.formats.base import LineScanner
-
-
 OPEN_RE = re.compile(r"^\s*#\s+embedder\s+(?P<ref>\S+)\s*$")
 CLOSE_RE = re.compile(r"^\s*#\s+/embedder\s*$")
 

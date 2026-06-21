@@ -11,16 +11,16 @@ if TYPE_CHECKING:
 class Provider(Protocol):
     def matches(self, raw: str) -> bool: ...
 
-    def parse_ref(self, raw: str) -> "AnyRef": ...
+    def parse_ref(self, raw: str) -> AnyRef: ...
 
-    def resolve(self, ref: "AnyRef") -> "AnyRef":
+    def resolve(self, ref: AnyRef) -> AnyRef:
         """Return the ref updated to the latest available version."""
         ...
 
-    def fetch(self, ref: "AnyRef", base_dir: Path) -> str:
+    def fetch(self, ref: AnyRef, base_dir: Path) -> str:
         """Return the fragment content."""
         ...
 
-    def cache_key(self, ref: "AnyRef") -> str | None:
+    def cache_key(self, ref: AnyRef) -> str | None:
         """Deduplication key for resolve() calls. None means no caching."""
         ...

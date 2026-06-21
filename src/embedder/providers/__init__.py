@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from embedder.providers.base import Provider
 from embedder.providers.github import GitHubProvider
-from embedder.providers.local import LocalRef, LocalProvider
+from embedder.providers.local import LocalProvider, LocalRef
 from embedder.refs import GitHubAssetRef, RefError
 
 AnyRef = GitHubAssetRef | LocalRef

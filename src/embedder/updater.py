@@ -10,7 +10,7 @@ from embedder.blocks import (
     iter_files,
     parse_blocks,
 )
-from embedder.providers import AnyRef, DEFAULT_REGISTRY, ProviderRegistry
+from embedder.providers import DEFAULT_REGISTRY, AnyRef, ProviderRegistry
 
 
 @dataclass(frozen=True)

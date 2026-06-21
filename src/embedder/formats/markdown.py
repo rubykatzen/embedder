@@ -5,7 +5,6 @@ from pathlib import Path
 
 from embedder.formats.text import TextFormat
 
-
 FENCE_RE = re.compile(r"^\s*(?P<fence>`{3,}|~{3,})")
 
 

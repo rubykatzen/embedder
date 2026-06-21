@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from embedder.blocks import BlockUpdate, parse_blocks
-from embedder.providers import AnyRef, ProviderRegistry
+from embedder.providers import ProviderRegistry
 from embedder.providers.local import LocalProvider, LocalRef
 from embedder.refs import GitHubAssetRef, parse_github_ref
 from embedder.updater import check_blocks, update_files
