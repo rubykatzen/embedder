@@ -11,15 +11,12 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.13"
-      - name: Install embedder
-        run: pip install -e .
       - name: Run embedder update
         env:
           GH_TOKEN: ${{ github.token }}
-        run: embedder update . --json > /tmp/embedder-result.json
+        run: |
+          pip install -e .
+          embedder update . --json > /tmp/embedder-result.json
       - name: Detect changes
         id: diff
         run: |
@@ -30,26 +27,4 @@ jobs:
           fi
       - name: Open pull request
         if: steps.diff.outputs.changed == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          branch="embedder/update-fragments"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$branch"
-          git add -A
-          git commit -m "chore: update embedded fragments"
-          git push origin "$branch" --force
-          body=$(jq -r '
-            "## Embedded fragment updates\n\n| File | Ref | Old | New |\n|---|---|---:|---:|\n" +
-            ([.changed[] | .changed_blocks[] |
-              "| \(.block.path) | \(if .block.ref.owner then "github.com/\(.block.ref.owner)/\(.block.ref.repo)@\(.block.ref.tag):\(.block.ref.asset)" else "local:\(.block.ref.path)" end) | \(.block.ref.tag // "current") | \(.latest_ref.tag // "current") |"
-            ] | join("\n"))
-          ' /tmp/embedder-result.json)
-          existing=$(gh pr list --head "$branch" --json number --jq '.[0].number // empty')
-          if [ -z "$existing" ]; then
-            gh pr create \
-              --title "chore: update embedded fragments" \
-              --body "$body" \
-              --head "$branch"
-          fi
+        uses: ./.github/actions/open-fragments-pr
