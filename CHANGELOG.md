@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.0.5] - 2026-06-21
+
+- fix: install embedder from pinned release
+- fix: install embedder from explicit workflow ref
+
 ## [v0.0.4] - 2026-06-20
 
 - feat: add GitHub Copilot to message-prefix agent list
