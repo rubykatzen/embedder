@@ -45,7 +45,7 @@ jobs:
       - name: Refresh local fragments
         run: |
           pip install -e .
-          embedder update .
+          embedder update . --local-only
       - uses: rubykatzen/releaser/.github/actions/push-release-branch@v0.3.4
         with:
           version: ${{ inputs.version }}

@@ -75,7 +75,7 @@ def command_check(args: argparse.Namespace) -> int:
 
 
 def command_update(args: argparse.Namespace) -> int:
-    changed = update_files([Path(path) for path in args.paths])
+    changed = update_files([Path(path) for path in args.paths], local_only=args.local_only)
     if args.json:
         to_json({"changed": changed})
         return int(ExitCode.OK)
@@ -141,6 +141,11 @@ def parser() -> argparse.ArgumentParser:
         help="Files or directories to update. Defaults to the current directory.",
     )
     update.add_argument("--json", action="store_true", help="Print machine-readable JSON output.")
+    update.add_argument(
+        "--local-only",
+        action="store_true",
+        help="Refresh local fragments only; skip external provider resolution.",
+    )
     update.set_defaults(func=command_update)
 
     doctor = subparsers.add_parser("doctor", help="Check local embedder prerequisites.")

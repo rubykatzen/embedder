@@ -224,6 +224,51 @@ def test_local_ref_path_traversal_rejected(tmp_path: Path) -> None:
         LocalProvider().fetch(ref, tmp_path)
 
 
+def test_local_only_skips_github_blocks(tmp_path: Path) -> None:
+    """update_files(local_only=True) refreshes local refs but leaves GitHub refs untouched."""
+    fragment = tmp_path / "frag.md"
+    fragment.write_text("new local\n", encoding="utf-8")
+
+    target = tmp_path / "README.md"
+    target.write_text(
+        "\n".join(
+            [
+                marker("github.com/rubykatzen/embedder@v0.1.0:fragment.md"),
+                "old github",
+                close_marker(),
+                marker("local:frag.md"),
+                "old local",
+                close_marker(),
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    update_files([tmp_path], fake_providers(), local_only=True)
+
+    result = target.read_text(encoding="utf-8")
+    assert "old github" in result
+    assert "new local" in result
+
+
+def test_local_only_does_not_call_github_resolve(tmp_path: Path) -> None:
+    """update_files(local_only=True) makes no resolve() calls to external providers."""
+    fragment = tmp_path / "frag.md"
+    fragment.write_text("content\n", encoding="utf-8")
+
+    target = tmp_path / "README.md"
+    target.write_text(
+        "\n".join([marker("local:frag.md"), "old", close_marker(), ""]),
+        encoding="utf-8",
+    )
+
+    provider = FakeGitHubProvider()
+    update_files([tmp_path], [provider, LocalProvider()], local_only=True)
+
+    assert provider.resolve_calls == 0
+
+
 def test_default_providers_not_mutated_between_calls() -> None:
     from embedder.providers import DEFAULT_PROVIDERS
 

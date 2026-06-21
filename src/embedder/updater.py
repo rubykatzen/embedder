@@ -56,6 +56,8 @@ def check_blocks(
 def update_files(
     paths: list[Path],
     providers: list[Provider] | None = None,
+    *,
+    local_only: bool = False,
 ) -> list[FileUpdate]:
     _providers = providers if providers is not None else DEFAULT_PROVIDERS
     changed: list[FileUpdate] = []
@@ -69,12 +71,16 @@ def update_files(
         if not blocks:
             continue
 
-        checks = check_blocks(blocks, _providers)
+        checks = check_blocks(blocks, _providers) if not local_only else [
+            CheckResult(block=block, latest_ref=block.ref) for block in blocks
+        ]
         updates: list[BlockUpdate] = []
         changed_checks: list[CheckResult] = []
 
         for check in checks:
             provider = get_provider(check.block.ref.render(), _providers)
+            if local_only and not provider.always_refresh(check.block.ref):
+                continue
             if not check.update_available and not provider.always_refresh(check.block.ref):
                 continue
             new_body = provider.fetch(check.latest_ref, path.parent)
