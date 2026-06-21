@@ -1,15 +1,11 @@
 from __future__ import annotations
 
 import os
-import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from embedder.refs import GitHubAssetRef, RefError, parse_ref
+from embedder.refs import RefError
 
-OPEN_MARKER_RE = re.compile(r"^\s*<!--\s+embedder\s+(?P<ref>\S+)\s+-->\s*$")
-CLOSE_MARKER_RE = re.compile(r"^\s*<!--\s+/embedder\s+-->\s*$")
-FENCE_RE = re.compile(r"^\s*(?P<fence>`{3,}|~{3,})")
 SKIP_DIRS = {
     ".git",
     ".hg",
@@ -37,41 +33,34 @@ class EmbedderBlock:
     path: str
     start_line: int
     end_line: int
-    ref: GitHubAssetRef
+    ref: object  # AnyRef — typed as object to avoid circular import
     body: str
 
 
 @dataclass(frozen=True)
 class BlockUpdate:
     block: EmbedderBlock
-    new_ref: GitHubAssetRef
+    new_ref: object  # AnyRef
     new_body: str
 
 
 def parse_blocks(path: Path, text: str) -> list[EmbedderBlock]:
+    from embedder.formats import get_format
+    from embedder.providers import parse_ref
+
+    fmt = get_format(path)
+    scanner = fmt.make_scanner()
     lines = text.splitlines(keepends=True)
     blocks: list[EmbedderBlock] = []
     active_start: int | None = None
-    active_ref: GitHubAssetRef | None = None
+    active_ref = None
     body_start = 0
-    active_fence: str | None = None
-    markdown = path.suffix.lower() in {".md", ".markdown"}
 
     for index, line in enumerate(lines):
-        if markdown and active_start is None:
-            fence_match = FENCE_RE.match(line)
-            if fence_match:
-                fence = fence_match["fence"]
-                marker = fence[0]
-                if active_fence is None:
-                    active_fence = marker
-                elif active_fence == marker:
-                    active_fence = None
-                continue
-            if active_fence is not None:
-                continue
+        if active_start is None and scanner.advance(line):
+            continue
 
-        open_match = OPEN_MARKER_RE.match(line)
+        open_match = fmt.open_re.match(line)
         if open_match:
             if active_start is not None:
                 raise EmbedderError(
@@ -85,7 +74,7 @@ def parse_blocks(path: Path, text: str) -> list[EmbedderBlock]:
             body_start = index + 1
             continue
 
-        if CLOSE_MARKER_RE.match(line):
+        if fmt.close_re.match(line):
             if active_start is None or active_ref is None:
                 raise EmbedderError(
                     f"{path}:{index + 1}: closing embedder marker without opening marker"
@@ -147,10 +136,13 @@ def scan_paths(paths: list[Path]) -> list[EmbedderBlock]:
     return blocks
 
 
-def apply_updates(text: str, updates: list[BlockUpdate]) -> str:
+def apply_updates(path: Path, text: str, updates: list[BlockUpdate]) -> str:
+    from embedder.formats import get_format
+
     if not updates:
         return text
 
+    fmt = get_format(path)
     lines = text.splitlines(keepends=True)
     output: list[str] = []
     cursor = 0
@@ -169,7 +161,7 @@ def apply_updates(text: str, updates: list[BlockUpdate]) -> str:
             replacement_body += "\n"
 
         output.extend(lines[cursor:start])
-        output.append(f"{indent}<!-- embedder {update.new_ref.render()} -->{newline}")
+        output.append(f"{indent}{fmt.render_open(update.new_ref.render())}{newline}")
         output.append(replacement_body)
         output.append(lines[end])
         cursor = end + 1

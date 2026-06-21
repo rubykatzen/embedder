@@ -10,17 +10,17 @@ from embedder.blocks import (
     iter_files,
     parse_blocks,
 )
-from embedder.github import GitHubClient
+from embedder.providers import AnyRef, DEFAULT_REGISTRY, ProviderRegistry
 
 
 @dataclass(frozen=True)
 class CheckResult:
     block: EmbedderBlock
-    latest_tag: str
+    latest_ref: AnyRef
 
     @property
     def update_available(self) -> bool:
-        return self.block.ref.tag != self.latest_tag
+        return self.block.ref != self.latest_ref
 
 
 @dataclass(frozen=True)
@@ -29,21 +29,32 @@ class FileUpdate:
     changed_blocks: list[CheckResult]
 
 
-def check_blocks(blocks: list[EmbedderBlock], github: GitHubClient) -> list[CheckResult]:
-    latest_by_repository: dict[str, str] = {}
+def check_blocks(
+    blocks: list[EmbedderBlock],
+    registry: ProviderRegistry = DEFAULT_REGISTRY,
+) -> list[CheckResult]:
+    cache: dict[str, AnyRef] = {}
     results: list[CheckResult] = []
 
     for block in blocks:
-        latest = latest_by_repository.get(block.ref.repository)
-        if latest is None:
-            latest = github.latest_tag(block.ref)
-            latest_by_repository[block.ref.repository] = latest
-        results.append(CheckResult(block=block, latest_tag=latest))
+        provider = registry.get(block.ref.render())
+        key = provider.cache_key(block.ref)
+        if key is not None:
+            latest = cache.get(key)
+            if latest is None:
+                latest = provider.resolve(block.ref)
+                cache[key] = latest
+        else:
+            latest = provider.resolve(block.ref)
+        results.append(CheckResult(block=block, latest_ref=latest))
 
     return results
 
 
-def update_files(paths: list[Path], github: GitHubClient) -> list[FileUpdate]:
+def update_files(
+    paths: list[Path],
+    registry: ProviderRegistry = DEFAULT_REGISTRY,
+) -> list[FileUpdate]:
     changed: list[FileUpdate] = []
 
     for path in iter_files(paths):
@@ -55,23 +66,24 @@ def update_files(paths: list[Path], github: GitHubClient) -> list[FileUpdate]:
         if not blocks:
             continue
 
-        checks = check_blocks(blocks, github)
+        checks = check_blocks(blocks, registry)
         updates: list[BlockUpdate] = []
         changed_checks: list[CheckResult] = []
+
         for check in checks:
             if not check.update_available:
                 continue
-            new_ref = check.block.ref.with_tag(check.latest_tag)
-            new_body = github.download_asset(new_ref)
+            provider = registry.get(check.latest_ref.render())
+            new_body = provider.fetch(check.latest_ref, path.parent)
             updates.append(
-                BlockUpdate(block=check.block, new_ref=new_ref, new_body=new_body)
+                BlockUpdate(block=check.block, new_ref=check.latest_ref, new_body=new_body)
             )
             changed_checks.append(check)
 
         if not updates:
             continue
 
-        new_text = apply_updates(text, updates)
+        new_text = apply_updates(path, text, updates)
         if new_text == text:
             continue
         path.write_text(new_text, encoding="utf-8")

@@ -39,7 +39,7 @@ class GitHubAssetRef:
         return f"github.com/{self.repository}@{self.tag}:{self.asset}"
 
 
-def parse_ref(raw: str) -> GitHubAssetRef:
+def parse_github_ref(raw: str) -> GitHubAssetRef:
     match = REF_RE.match(raw.strip())
     if not match:
         raise RefError(f"Invalid embedder ref: {raw}")

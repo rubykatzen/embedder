@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from embedder.blocks import EmbedderEnvironmentError, EmbedderError
-from embedder.refs import GitHubAssetRef
+from embedder.refs import GitHubAssetRef, parse_github_ref
 
 
 @dataclass(frozen=True)
@@ -17,7 +17,22 @@ class CommandResult:
     stderr: str
 
 
-class GitHubClient:
+class GitHubProvider:
+    def matches(self, raw: str) -> bool:
+        return raw.startswith("github.com/")
+
+    def parse_ref(self, raw: str) -> GitHubAssetRef:
+        return parse_github_ref(raw)
+
+    def resolve(self, ref: GitHubAssetRef) -> GitHubAssetRef:
+        return ref.with_tag(self._latest_tag(ref))
+
+    def fetch(self, ref: GitHubAssetRef, base_dir: Path) -> str:
+        return self._download_asset(ref)
+
+    def cache_key(self, ref: GitHubAssetRef) -> str:
+        return ref.repository
+
     def available(self) -> bool:
         return shutil.which("gh") is not None
 
@@ -45,7 +60,7 @@ class GitHubClient:
     def auth_ok(self) -> bool:
         return self.run(["auth", "status"], check=False).returncode == 0
 
-    def latest_tag(self, ref: GitHubAssetRef) -> str:
+    def _latest_tag(self, ref: GitHubAssetRef) -> str:
         result = self.run(
             [
                 "release",
@@ -62,7 +77,7 @@ class GitHubClient:
             raise EmbedderError(f"Could not resolve latest release for {ref.repository}")
         return result.stdout
 
-    def download_asset(self, ref: GitHubAssetRef) -> str:
+    def _download_asset(self, ref: GitHubAssetRef) -> str:
         with tempfile.TemporaryDirectory(prefix="embedder-") as tmpdir:
             self.run(
                 [
