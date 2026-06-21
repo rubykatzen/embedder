@@ -1,0 +1,8 @@
+name: Install embedder
+description: Install embedder from this repository's source tree.
+runs:
+  using: composite
+  steps:
+    - name: Install
+      shell: bash
+      run: pip install -e "${{ github.action_path }}/../../.."

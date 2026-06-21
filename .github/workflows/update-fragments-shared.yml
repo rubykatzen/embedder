@@ -19,12 +19,12 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v7
+      - uses: rubykatzen/embedder/.github/actions/install-embedder@v0.0.6
       - name: Run embedder update
         env:
           GH_TOKEN: ${{ secrets.token || github.token }}
           EMBEDDER_PATHS: ${{ inputs.paths }}
         run: |
-          pip install "git+https://github.com/rubykatzen/embedder.git@v0.0.6"
           read -ra paths <<< "$EMBEDDER_PATHS"
           embedder update "${paths[@]}"
       - name: Detect changes
