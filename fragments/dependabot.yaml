@@ -1,4 +1,3 @@
-# embedder local:fragments/dependabot.yaml
 version: 2
 updates:
   - package-ecosystem: pip
@@ -9,4 +8,3 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
-# /embedder
