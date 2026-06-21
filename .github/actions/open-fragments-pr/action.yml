@@ -5,10 +5,6 @@ inputs:
     description: Branch name for the PR.
     required: false
     default: embedder/update-fragments
-  result_file:
-    description: Path to the embedder JSON result file.
-    required: false
-    default: /tmp/embedder-result.json
 runs:
   using: composite
   steps:
@@ -17,24 +13,18 @@ runs:
       env:
         GH_TOKEN: ${{ github.token }}
         BRANCH: ${{ inputs.branch }}
-        RESULT_FILE: ${{ inputs.result_file }}
       run: |
+        stat=$(git diff --stat)
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git checkout -b "$BRANCH"
         git add -A
         git commit -m "chore: update embedded fragments"
         git push origin "$BRANCH" --force
-        body=$(jq -r '
-          "## Embedded fragment updates\n\n| File | Ref | Old | New |\n|---|---|---:|---:|\n" +
-          ([.changed[] | .changed_blocks[] |
-            "| \(.block.path) | \(if .block.ref.owner then "github.com/\(.block.ref.owner)/\(.block.ref.repo)@\(.block.ref.tag):\(.block.ref.asset)" else "local:\(.block.ref.path)" end) | \(.block.ref.tag // "current") | \(.latest_ref.tag // "current") |"
-          ] | join("\n"))
-        ' "$RESULT_FILE")
         existing=$(gh pr list --head "$BRANCH" --json number --jq '.[0].number // empty')
         if [ -z "$existing" ]; then
           gh pr create \
             --title "chore: update embedded fragments" \
-            --body "$body" \
+            --body "$stat" \
             --head "$BRANCH"
         fi

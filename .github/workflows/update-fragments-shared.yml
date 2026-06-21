@@ -26,7 +26,7 @@ jobs:
         run: |
           pip install "git+https://github.com/rubykatzen/embedder.git@v0.0.6"
           read -ra paths <<< "$EMBEDDER_PATHS"
-          embedder update "${paths[@]}" --json > /tmp/embedder-result.json
+          embedder update "${paths[@]}"
       - name: Detect changes
         id: diff
         run: |

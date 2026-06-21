@@ -16,7 +16,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           pip install -e .
-          embedder update . --json > /tmp/embedder-result.json
+          embedder update .
       - name: Detect changes
         id: diff
         run: |
