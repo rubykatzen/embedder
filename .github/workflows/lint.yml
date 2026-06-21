@@ -9,10 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - run: pip install ruff yamllint
-      - run: |
-          bash <(curl -sL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
-          sudo install actionlint /usr/local/bin/actionlint
+      - uses: rubykatzen/baseline/.github/actions/setup-runtimes@v0.6.2
       - uses: rubykatzen/baseline/.github/actions/lint-yamllint@v0.6.2
       - uses: rubykatzen/baseline/.github/actions/lint-ruff@v0.6.2
       - uses: rubykatzen/baseline/.github/actions/lint-actionlint@v0.6.2
