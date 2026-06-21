@@ -1,16 +1,8 @@
 name: Update embedded fragments
 on:
-  workflow_call:
-    inputs:
-      paths:
-        description: Files or directories to scan. Defaults to the current directory.
-        required: false
-        type: string
-        default: "."
-    secrets:
-      token:
-        description: GitHub token for accessing private fragment source repositories.
-        required: false
+  schedule:
+    - cron: '0 8 * * *'  # 10:00 Berlin (CEST, UTC+2)
+  workflow_dispatch:
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -19,14 +11,12 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v7
-      - uses: rubykatzen/embedder/.github/actions/install-embedder@v0.0.6
       - name: Run embedder update
         env:
-          GH_TOKEN: ${{ secrets.token || github.token }}
-          EMBEDDER_PATHS: ${{ inputs.paths }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          read -ra paths <<< "$EMBEDDER_PATHS"
-          embedder update "${paths[@]}"
+          pip install -e .
+          embedder update .
       - name: Detect changes
         id: diff
         run: |

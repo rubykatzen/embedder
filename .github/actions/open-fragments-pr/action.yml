@@ -1,0 +1,30 @@
+name: Open fragments PR
+description: "Commit fragment updates and open a pull request."
+inputs:
+  branch:
+    description: Branch name for the PR.
+    required: false
+    default: embedder/update-fragments
+runs:
+  using: composite
+  steps:
+    - name: Commit and open pull request
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        BRANCH: ${{ inputs.branch }}
+      run: |
+        stat=$(git diff --stat)
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git checkout -b "$BRANCH"
+        git add -A
+        git commit -m "chore: update embedded fragments"
+        git push origin "$BRANCH" --force
+        existing=$(gh pr list --head "$BRANCH" --json number --jq '.[0].number // empty')
+        if [ -z "$existing" ]; then
+          gh pr create \
+            --title "chore: update embedded fragments" \
+            --body "$stat" \
+            --head "$BRANCH"
+        fi

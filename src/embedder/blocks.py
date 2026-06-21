@@ -1,15 +1,13 @@
 from __future__ import annotations
 
 import os
-import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from embedder.refs import GitHubAssetRef, RefError, parse_ref
+from embedder.errors import EmbedderEnvironmentError, EmbedderError, RefError
+from embedder.formats import get_format
+from embedder.providers import DEFAULT_PROVIDERS, Provider, get_provider
 
-OPEN_MARKER_RE = re.compile(r"^\s*<!--\s+embedder\s+(?P<ref>\S+)\s+-->\s*$")
-CLOSE_MARKER_RE = re.compile(r"^\s*<!--\s+/embedder\s+-->\s*$")
-FENCE_RE = re.compile(r"^\s*(?P<fence>`{3,}|~{3,})")
 SKIP_DIRS = {
     ".git",
     ".hg",
@@ -24,68 +22,60 @@ SKIP_DIRS = {
 }
 
 
-class EmbedderError(Exception):
-    pass
-
-
-class EmbedderEnvironmentError(EmbedderError):
-    pass
-
-
 @dataclass(frozen=True)
 class EmbedderBlock:
     path: str
     start_line: int
     end_line: int
-    ref: GitHubAssetRef
+    ref: object  # AnyRef — typed as object to avoid circular import
     body: str
 
 
 @dataclass(frozen=True)
 class BlockUpdate:
     block: EmbedderBlock
-    new_ref: GitHubAssetRef
+    new_ref: object  # AnyRef
     new_body: str
 
 
-def parse_blocks(path: Path, text: str) -> list[EmbedderBlock]:
+def parse_blocks(
+    path: Path,
+    text: str,
+    providers: list[Provider] | None = None,
+) -> list[EmbedderBlock]:
+    _providers = providers if providers is not None else DEFAULT_PROVIDERS
+    fmt = get_format(path)
+    if fmt is None:
+        return []
+
+    scanner = fmt.make_scanner()
     lines = text.splitlines(keepends=True)
     blocks: list[EmbedderBlock] = []
     active_start: int | None = None
-    active_ref: GitHubAssetRef | None = None
+    active_ref = None
     body_start = 0
-    active_fence: str | None = None
-    markdown = path.suffix.lower() in {".md", ".markdown"}
 
     for index, line in enumerate(lines):
-        if markdown and active_start is None:
-            fence_match = FENCE_RE.match(line)
-            if fence_match:
-                fence = fence_match["fence"]
-                marker = fence[0]
-                if active_fence is None:
-                    active_fence = marker
-                elif active_fence == marker:
-                    active_fence = None
-                continue
-            if active_fence is not None:
-                continue
+        if active_start is None and scanner.advance(line):
+            continue
 
-        open_match = OPEN_MARKER_RE.match(line)
+        open_match = fmt.open_re.match(line)
         if open_match:
             if active_start is not None:
                 raise EmbedderError(
                     f"{path}:{index + 1}: nested embedder block is not allowed"
                 )
             try:
-                active_ref = parse_ref(open_match["ref"])
+                active_ref = get_provider(open_match["ref"], _providers).parse_ref(
+                    open_match["ref"]
+                )
             except RefError as error:
                 raise EmbedderError(f"{path}:{index + 1}: {error}") from error
             active_start = index
             body_start = index + 1
             continue
 
-        if CLOSE_MARKER_RE.match(line):
+        if fmt.close_re.match(line):
             if active_start is None or active_ref is None:
                 raise EmbedderError(
                     f"{path}:{index + 1}: closing embedder marker without opening marker"
@@ -132,7 +122,10 @@ def iter_files(paths: list[Path]) -> list[Path]:
     return sorted(files)
 
 
-def scan_paths(paths: list[Path]) -> list[EmbedderBlock]:
+def scan_paths(
+    paths: list[Path],
+    providers: list[Provider] | None = None,
+) -> list[EmbedderBlock]:
     blocks: list[EmbedderBlock] = []
     for path in iter_files(paths):
         if not is_probably_text(path):
@@ -143,12 +136,16 @@ def scan_paths(paths: list[Path]) -> list[EmbedderBlock]:
             continue
         except OSError as error:
             raise EmbedderError(f"Could not read {path}: {error}") from error
-        blocks.extend(parse_blocks(path, text))
+        blocks.extend(parse_blocks(path, text, providers))
     return blocks
 
 
-def apply_updates(text: str, updates: list[BlockUpdate]) -> str:
+def apply_updates(path: Path, text: str, updates: list[BlockUpdate]) -> str:
     if not updates:
+        return text
+
+    fmt = get_format(path)
+    if fmt is None:
         return text
 
     lines = text.splitlines(keepends=True)
@@ -167,12 +164,29 @@ def apply_updates(text: str, updates: list[BlockUpdate]) -> str:
         replacement_body = update.new_body
         if replacement_body and not replacement_body.endswith("\n"):
             replacement_body += "\n"
+        if indent and replacement_body:
+            replacement_body = "".join(
+                indent + line if line.rstrip("\n") else line
+                for line in replacement_body.splitlines(keepends=True)
+            )
 
         output.extend(lines[cursor:start])
-        output.append(f"{indent}<!-- embedder {update.new_ref.render()} -->{newline}")
+        output.append(f"{indent}{fmt.render_open(update.new_ref.render())}{newline}")
         output.append(replacement_body)
         output.append(lines[end])
         cursor = end + 1
 
     output.extend(lines[cursor:])
     return "".join(output)
+
+
+__all__ = [
+    "BlockUpdate",
+    "EmbedderBlock",
+    "EmbedderEnvironmentError",
+    "EmbedderError",
+    "apply_updates",
+    "iter_files",
+    "parse_blocks",
+    "scan_paths",
+]

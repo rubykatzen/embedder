@@ -3,19 +3,15 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from dataclasses import asdict
+from dataclasses import fields, is_dataclass
 from enum import IntEnum
 from pathlib import Path
 from typing import Any
 
 from embedder import __version__
-from embedder.blocks import (
-    EmbedderBlock,
-    EmbedderEnvironmentError,
-    EmbedderError,
-    scan_paths,
-)
-from embedder.github import GitHubClient
+from embedder.blocks import EmbedderBlock, scan_paths
+from embedder.errors import EmbedderEnvironmentError, EmbedderError
+from embedder.providers.github import GitHubProvider
 from embedder.updater import check_blocks, update_files
 
 
@@ -28,8 +24,8 @@ class ExitCode(IntEnum):
 
 def to_json(data: Any) -> None:
     def default(value: Any) -> Any:
-        if hasattr(value, "__dataclass_fields__"):
-            return asdict(value)
+        if is_dataclass(value) and not isinstance(value, type):
+            return {f.name: getattr(value, f.name) for f in fields(value)}
         if isinstance(value, Path):
             return str(value)
         raise TypeError(f"Object is not JSON serializable: {value!r}")
@@ -48,26 +44,18 @@ def command_scan(args: argparse.Namespace) -> int:
         return int(ExitCode.OK)
 
     for block in blocks:
-        ref = block.ref
-        print(
-            f"{block.path}:{block.start_line} "
-            f"{ref.owner}/{ref.repo}@{ref.tag}:{ref.asset}"
-        )
+        print(f"{block.path}:{block.start_line} {block.ref.render()}")
     return int(ExitCode.OK)
 
 
-def print_block(block: EmbedderBlock, *, latest_tag: str | None = None) -> None:
-    ref = block.ref
-    suffix = "" if latest_tag is None else f" -> {latest_tag}"
-    print(
-        f"{block.path}:{block.start_line} "
-        f"{ref.owner}/{ref.repo}@{ref.tag}:{ref.asset}{suffix}"
-    )
+def _print_block(block: EmbedderBlock, *, latest_ref: Any = None) -> None:
+    suffix = "" if latest_ref is None else f" -> {latest_ref.render()}"
+    print(f"{block.path}:{block.start_line} {block.ref.render()}{suffix}")
 
 
 def command_check(args: argparse.Namespace) -> int:
     blocks = scan_paths([Path(path) for path in args.paths])
-    results = check_blocks(blocks, GitHubClient())
+    results = check_blocks(blocks)
     updates = [result for result in results if result.update_available]
 
     if args.json:
@@ -82,12 +70,12 @@ def command_check(args: argparse.Namespace) -> int:
         return int(ExitCode.OK)
 
     for result in updates:
-        print_block(result.block, latest_tag=result.latest_tag)
+        _print_block(result.block, latest_ref=result.latest_ref)
     return int(ExitCode.UPDATES_AVAILABLE)
 
 
 def command_update(args: argparse.Namespace) -> int:
-    changed = update_files([Path(path) for path in args.paths], GitHubClient())
+    changed = update_files([Path(path) for path in args.paths], local_only=args.local_only)
     if args.json:
         to_json({"changed": changed})
         return int(ExitCode.OK)
@@ -96,12 +84,12 @@ def command_update(args: argparse.Namespace) -> int:
         return int(ExitCode.OK)
     for file_update in changed:
         for result in file_update.changed_blocks:
-            print_block(result.block, latest_tag=result.latest_tag)
+            _print_block(result.block, latest_ref=result.latest_ref)
     return int(ExitCode.OK)
 
 
 def command_doctor(args: argparse.Namespace) -> int:
-    github = GitHubClient()
+    github = GitHubProvider()
     gh_available = github.available()
     checks = {
         "gh": "ok" if gh_available else "missing",
@@ -153,6 +141,11 @@ def parser() -> argparse.ArgumentParser:
         help="Files or directories to update. Defaults to the current directory.",
     )
     update.add_argument("--json", action="store_true", help="Print machine-readable JSON output.")
+    update.add_argument(
+        "--local-only",
+        action="store_true",
+        help="Refresh local fragments only; skip external provider resolution.",
+    )
     update.set_defaults(func=command_update)
 
     doctor = subparsers.add_parser("doctor", help="Check local embedder prerequisites.")

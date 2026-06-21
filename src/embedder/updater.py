@@ -10,17 +10,17 @@ from embedder.blocks import (
     iter_files,
     parse_blocks,
 )
-from embedder.github import GitHubClient
+from embedder.providers import DEFAULT_PROVIDERS, AnyRef, Provider, get_provider
 
 
 @dataclass(frozen=True)
 class CheckResult:
     block: EmbedderBlock
-    latest_tag: str
+    latest_ref: AnyRef
 
     @property
     def update_available(self) -> bool:
-        return self.block.ref.tag != self.latest_tag
+        return self.block.ref != self.latest_ref
 
 
 @dataclass(frozen=True)
@@ -29,21 +29,39 @@ class FileUpdate:
     changed_blocks: list[CheckResult]
 
 
-def check_blocks(blocks: list[EmbedderBlock], github: GitHubClient) -> list[CheckResult]:
-    latest_by_repository: dict[str, str] = {}
+def check_blocks(
+    blocks: list[EmbedderBlock],
+    providers: list[Provider] | None = None,
+) -> list[CheckResult]:
+    _providers = providers if providers is not None else DEFAULT_PROVIDERS
+    resolved_cache: dict[str, AnyRef] = {}
     results: list[CheckResult] = []
 
     for block in blocks:
-        latest = latest_by_repository.get(block.ref.repository)
-        if latest is None:
-            latest = github.latest_tag(block.ref)
-            latest_by_repository[block.ref.repository] = latest
-        results.append(CheckResult(block=block, latest_tag=latest))
+        provider = get_provider(block.ref.render(), _providers)
+        key = provider.cache_key(block.ref)
+        if key is not None:
+            if key in resolved_cache:
+                latest = provider.resolve_cached(block.ref, resolved_cache[key])
+            else:
+                latest = provider.resolve(block.ref)
+                resolved_cache[key] = latest
+        else:
+            latest = provider.resolve(block.ref)
+        results.append(CheckResult(block=block, latest_ref=latest))
 
     return results
 
 
-def update_files(paths: list[Path], github: GitHubClient) -> list[FileUpdate]:
+def update_files(
+    paths: list[Path],
+    providers: list[Provider] | None = None,
+    *,
+    local_only: bool = False,
+    base_dir: Path | None = None,
+) -> list[FileUpdate]:
+    _providers = providers if providers is not None else DEFAULT_PROVIDERS
+    _base_dir = base_dir if base_dir is not None else Path.cwd()
     changed: list[FileUpdate] = []
 
     for path in iter_files(paths):
@@ -51,27 +69,34 @@ def update_files(paths: list[Path], github: GitHubClient) -> list[FileUpdate]:
             text = path.read_text(encoding="utf-8")
         except UnicodeDecodeError:
             continue
-        blocks = parse_blocks(path, text)
+        blocks = parse_blocks(path, text, _providers)
         if not blocks:
             continue
 
-        checks = check_blocks(blocks, github)
+        checks = check_blocks(blocks, _providers) if not local_only else [
+            CheckResult(block=block, latest_ref=block.ref) for block in blocks
+        ]
         updates: list[BlockUpdate] = []
         changed_checks: list[CheckResult] = []
+
         for check in checks:
-            if not check.update_available:
+            provider = get_provider(check.block.ref.render(), _providers)
+            if local_only and not provider.always_refresh(check.block.ref):
                 continue
-            new_ref = check.block.ref.with_tag(check.latest_tag)
-            new_body = github.download_asset(new_ref)
+            if not check.update_available and not provider.always_refresh(check.block.ref):
+                continue
+            new_body = provider.fetch(check.latest_ref, _base_dir)
+            if new_body == check.block.body and not check.update_available:
+                continue
             updates.append(
-                BlockUpdate(block=check.block, new_ref=new_ref, new_body=new_body)
+                BlockUpdate(block=check.block, new_ref=check.latest_ref, new_body=new_body)
             )
             changed_checks.append(check)
 
         if not updates:
             continue
 
-        new_text = apply_updates(text, updates)
+        new_text = apply_updates(path, text, updates)
         if new_text == text:
             continue
         path.write_text(new_text, encoding="utf-8")

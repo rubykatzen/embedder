@@ -1,26 +1,49 @@
 from pathlib import Path
 
+import pytest
+
 from embedder.blocks import BlockUpdate, parse_blocks
+from embedder.errors import EmbedderError
+from embedder.providers import Provider
+from embedder.providers.github import GitHubAssetRef, parse_github_ref
+from embedder.providers.local import LocalProvider, LocalRef
 from embedder.updater import check_blocks, update_files
 from tests.helpers import close_marker, marker
 
 
-class FakeGitHub:
+class FakeGitHubProvider:
     def __init__(self) -> None:
-        self.latest = {
-            "rubykatzen/embedder": "v0.2.0",
-        }
-        self.assets = {
+        self.latest: dict[str, str] = {"rubykatzen/embedder": "v0.2.0"}
+        self.assets: dict[str, str] = {
             "github.com/rubykatzen/embedder@v0.2.0:fragment.md": "new managed text\n",
         }
-        self.latest_calls = 0
+        self.resolve_calls = 0
 
-    def latest_tag(self, ref) -> str:
-        self.latest_calls += 1
-        return self.latest[ref.repository]
+    def matches(self, raw: str) -> bool:
+        return raw.startswith("github.com/")
 
-    def download_asset(self, ref) -> str:
+    def parse_ref(self, raw: str) -> GitHubAssetRef:
+        return parse_github_ref(raw)
+
+    def resolve(self, ref: GitHubAssetRef) -> GitHubAssetRef:
+        self.resolve_calls += 1
+        return ref.with_tag(self.latest[ref.repository])
+
+    def resolve_cached(self, ref: GitHubAssetRef, cached: GitHubAssetRef) -> GitHubAssetRef:
+        return ref.with_tag(cached.tag)
+
+    def always_refresh(self, ref: GitHubAssetRef) -> bool:
+        return False
+
+    def fetch(self, ref: GitHubAssetRef, base_dir: Path) -> str:
         return self.assets[ref.render()]
+
+    def cache_key(self, ref: GitHubAssetRef) -> str:
+        return ref.repository
+
+
+def fake_providers() -> list[Provider]:
+    return [FakeGitHubProvider(), LocalProvider()]
 
 
 def test_check_blocks_marks_updates() -> None:
@@ -34,10 +57,10 @@ def test_check_blocks_marks_updates() -> None:
     )
     blocks = parse_blocks(Path("AGENTS.md"), text)
 
-    results = check_blocks(blocks, FakeGitHub())
+    results = check_blocks(blocks, fake_providers())
 
     assert len(results) == 1
-    assert results[0].latest_tag == "v0.2.0"
+    assert results[0].latest_ref.render() == "github.com/rubykatzen/embedder@v0.2.0:fragment.md"
     assert results[0].update_available
 
 
@@ -57,7 +80,7 @@ def test_update_files_replaces_only_managed_body(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    changed = update_files([tmp_path], FakeGitHub())
+    changed = update_files([tmp_path], fake_providers(), base_dir=tmp_path)
 
     assert [item.path for item in changed] == [str(target)]
     assert target.read_text(encoding="utf-8") == "\n".join(
@@ -86,7 +109,11 @@ def test_apply_update_keeps_body_trailing_newline() -> None:
 
     from embedder.blocks import apply_updates
 
-    updated = apply_updates(text, [BlockUpdate(block=block, new_ref=new_ref, new_body="new")])
+    updated = apply_updates(
+        Path("AGENTS.md"),
+        text,
+        [BlockUpdate(block=block, new_ref=new_ref, new_body="new")],
+    )
 
     assert updated == "\n".join(
         [
@@ -98,7 +125,7 @@ def test_apply_update_keeps_body_trailing_newline() -> None:
     )
 
 
-def test_check_blocks_caches_latest_release_per_repository() -> None:
+def test_check_blocks_caches_resolve_per_repository() -> None:
     text = "\n".join(
         [
             marker("github.com/rubykatzen/embedder@v0.1.0:first.md"),
@@ -111,8 +138,151 @@ def test_check_blocks_caches_latest_release_per_repository() -> None:
         ]
     )
     blocks = parse_blocks(Path("AGENTS.md"), text)
-    github = FakeGitHub()
+    provider = FakeGitHubProvider()
 
-    check_blocks(blocks, github)
+    check_blocks(blocks, [provider, LocalProvider()])
 
-    assert github.latest_calls == 1
+    assert provider.resolve_calls == 1
+
+
+def test_local_ref_is_always_current(tmp_path: Path) -> None:
+    fragment = tmp_path / "fragment.md"
+    fragment.write_text("local content\n", encoding="utf-8")
+
+    target = tmp_path / "README.md"
+    target.write_text(
+        "\n".join(
+            [
+                marker("local:fragment.md"),
+                "old content",
+                close_marker(),
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    registry = [FakeGitHubProvider(), LocalProvider()]
+    results = check_blocks(parse_blocks(target, target.read_text(encoding="utf-8")), registry)
+
+    assert not results[0].update_available
+
+
+def test_local_ref_fetch(tmp_path: Path) -> None:
+    fragment = tmp_path / "frag.md"
+    fragment.write_text("hello from local\n", encoding="utf-8")
+
+    ref = LocalRef(path="frag.md")
+    content = LocalProvider().fetch(ref, tmp_path)
+
+    assert content == "hello from local\n"
+
+
+def test_cache_uses_correct_asset_per_block() -> None:
+    """Two blocks from the same repo must not share each other's asset."""
+    text = "\n".join(
+        [
+            marker("github.com/rubykatzen/embedder@v0.1.0:first.md"),
+            "old",
+            close_marker(),
+            marker("github.com/rubykatzen/embedder@v0.1.0:second.md"),
+            "old",
+            close_marker(),
+            "",
+        ]
+    )
+    blocks = parse_blocks(Path("AGENTS.md"), text)
+    registry = [FakeGitHubProvider(), LocalProvider()]
+
+    results = check_blocks(blocks, registry)
+
+    assert results[0].latest_ref.render() == "github.com/rubykatzen/embedder@v0.2.0:first.md"
+    assert results[1].latest_ref.render() == "github.com/rubykatzen/embedder@v0.2.0:second.md"
+
+
+def test_local_ref_body_refreshed_on_update(tmp_path: Path) -> None:
+    """update_files re-fetches local refs even when the ref itself hasn't changed."""
+    fragment = tmp_path / "frag.md"
+    fragment.write_text("v1 content\n", encoding="utf-8")
+
+    target = tmp_path / "README.md"
+    target.write_text(
+        "\n".join([marker("local:frag.md"), "old content", close_marker(), ""]),
+        encoding="utf-8",
+    )
+
+    fragment.write_text("v2 content\n", encoding="utf-8")
+    registry = [FakeGitHubProvider(), LocalProvider()]
+    update_files([tmp_path], registry, base_dir=tmp_path)
+
+    assert "v2 content" in target.read_text(encoding="utf-8")
+
+
+def test_local_ref_path_traversal_rejected(tmp_path: Path) -> None:
+    ref = LocalRef(path="../../etc/passwd")
+    with pytest.raises(EmbedderError, match="escapes base directory"):
+        LocalProvider().fetch(ref, tmp_path)
+
+
+def test_local_only_skips_github_blocks(tmp_path: Path) -> None:
+    """update_files(local_only=True) refreshes local refs but leaves GitHub refs untouched."""
+    fragment = tmp_path / "frag.md"
+    fragment.write_text("new local\n", encoding="utf-8")
+
+    target = tmp_path / "README.md"
+    target.write_text(
+        "\n".join(
+            [
+                marker("github.com/rubykatzen/embedder@v0.1.0:fragment.md"),
+                "old github",
+                close_marker(),
+                marker("local:frag.md"),
+                "old local",
+                close_marker(),
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    update_files([tmp_path], fake_providers(), local_only=True, base_dir=tmp_path)
+
+    result = target.read_text(encoding="utf-8")
+    assert "old github" in result
+    assert "new local" in result
+
+
+def test_local_only_does_not_call_github_resolve(tmp_path: Path) -> None:
+    """update_files(local_only=True) makes no resolve() calls to external providers."""
+    fragment = tmp_path / "frag.md"
+    fragment.write_text("content\n", encoding="utf-8")
+
+    target = tmp_path / "README.md"
+    target.write_text(
+        "\n".join([marker("local:frag.md"), "old", close_marker(), ""]),
+        encoding="utf-8",
+    )
+
+    provider = FakeGitHubProvider()
+    update_files([tmp_path], [provider, LocalProvider()], local_only=True, base_dir=tmp_path)
+
+    assert provider.resolve_calls == 0
+
+
+def test_default_providers_not_mutated_between_calls() -> None:
+    from embedder.providers import DEFAULT_PROVIDERS
+
+    text = "\n".join(
+        [
+            marker("github.com/rubykatzen/embedder@v0.1.0:fragment.md"),
+            "old",
+            close_marker(),
+            "",
+        ]
+    )
+    blocks = parse_blocks(Path("AGENTS.md"), text)
+
+    providers_before = list(DEFAULT_PROVIDERS)
+    check_blocks(blocks, fake_providers())
+    check_blocks(blocks, fake_providers())
+    assert list(DEFAULT_PROVIDERS) == providers_before
