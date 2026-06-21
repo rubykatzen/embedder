@@ -222,3 +222,22 @@ def test_local_ref_path_traversal_rejected(tmp_path: Path) -> None:
     ref = LocalRef(path="../../etc/passwd")
     with pytest.raises(EmbedderError, match="escapes base directory"):
         LocalProvider().fetch(ref, tmp_path)
+
+
+def test_default_providers_not_mutated_between_calls() -> None:
+    from embedder.providers import DEFAULT_PROVIDERS
+
+    text = "\n".join(
+        [
+            marker("github.com/rubykatzen/embedder@v0.1.0:fragment.md"),
+            "old",
+            close_marker(),
+            "",
+        ]
+    )
+    blocks = parse_blocks(Path("AGENTS.md"), text)
+
+    providers_before = list(DEFAULT_PROVIDERS)
+    check_blocks(blocks, fake_providers())
+    check_blocks(blocks, fake_providers())
+    assert list(DEFAULT_PROVIDERS) == providers_before

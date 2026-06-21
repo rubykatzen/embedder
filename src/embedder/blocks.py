@@ -6,7 +6,7 @@ from pathlib import Path
 
 from embedder.errors import EmbedderEnvironmentError, EmbedderError, RefError
 from embedder.formats import get_format
-from embedder.providers import parse_ref
+from embedder.providers import DEFAULT_PROVIDERS, Provider, get_provider
 
 SKIP_DIRS = {
     ".git",
@@ -38,7 +38,12 @@ class BlockUpdate:
     new_body: str
 
 
-def parse_blocks(path: Path, text: str) -> list[EmbedderBlock]:
+def parse_blocks(
+    path: Path,
+    text: str,
+    providers: list[Provider] | None = None,
+) -> list[EmbedderBlock]:
+    _providers = providers if providers is not None else DEFAULT_PROVIDERS
     fmt = get_format(path)
     if fmt is None:
         return []
@@ -61,7 +66,9 @@ def parse_blocks(path: Path, text: str) -> list[EmbedderBlock]:
                     f"{path}:{index + 1}: nested embedder block is not allowed"
                 )
             try:
-                active_ref = parse_ref(open_match["ref"])
+                active_ref = get_provider(open_match["ref"], _providers).parse_ref(
+                    open_match["ref"]
+                )
             except RefError as error:
                 raise EmbedderError(f"{path}:{index + 1}: {error}") from error
             active_start = index
@@ -115,7 +122,10 @@ def iter_files(paths: list[Path]) -> list[Path]:
     return sorted(files)
 
 
-def scan_paths(paths: list[Path]) -> list[EmbedderBlock]:
+def scan_paths(
+    paths: list[Path],
+    providers: list[Provider] | None = None,
+) -> list[EmbedderBlock]:
     blocks: list[EmbedderBlock] = []
     for path in iter_files(paths):
         if not is_probably_text(path):
@@ -126,7 +136,7 @@ def scan_paths(paths: list[Path]) -> list[EmbedderBlock]:
             continue
         except OSError as error:
             raise EmbedderError(f"Could not read {path}: {error}") from error
-        blocks.extend(parse_blocks(path, text))
+        blocks.extend(parse_blocks(path, text, providers))
     return blocks
 
 

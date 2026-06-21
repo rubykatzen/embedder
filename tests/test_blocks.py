@@ -190,6 +190,72 @@ def test_parse_local_ref_in_markdown() -> None:
     assert blocks[0].ref.render() == "local:fragments/file.md"
 
 
+def test_yaml_ignores_markers_in_sequence_block_scalar() -> None:
+    text = "\n".join(
+        [
+            "items:",
+            "  - |",
+            f"    {yaml_marker('local:file.yaml')}",
+            "    some content",
+            f"    {yaml_close_marker()}",
+            "other: value",
+            "",
+        ]
+    )
+
+    assert parse_blocks(Path("config.yaml"), text) == []
+
+
+def test_parse_blocks_uses_injected_providers() -> None:
+    from dataclasses import dataclass
+    from pathlib import Path as _Path
+
+    @dataclass(frozen=True)
+    class FakeRef:
+        name: str
+
+        def render(self) -> str:
+            return f"fake:{self.name}"
+
+    class FakeProvider:
+        def matches(self, raw: str) -> bool:
+            return raw.startswith("fake:")
+
+        def parse_ref(self, raw: str) -> FakeRef:
+            return FakeRef(name=raw[len("fake:"):])
+
+        def resolve(self, ref: FakeRef) -> FakeRef:
+            return ref
+
+        def resolve_cached(self, ref: FakeRef, cached: FakeRef) -> FakeRef:
+            return ref
+
+        def always_refresh(self, ref: FakeRef) -> bool:
+            return False
+
+        def fetch(self, ref: FakeRef, base_dir: _Path) -> str:
+            return ""
+
+        def cache_key(self, ref: FakeRef) -> str | None:
+            return None
+
+    text = "\n".join(
+        [
+            marker("fake:thing"),
+            "body",
+            close_marker(),
+            "",
+        ]
+    )
+
+    with pytest.raises(EmbedderError):
+        parse_blocks(Path("README.md"), text)
+
+    blocks = parse_blocks(Path("README.md"), text, providers=[FakeProvider()])
+    assert len(blocks) == 1
+    assert blocks[0].ref.render() == "fake:thing"
+
+
 def test_apply_updates_indents_body_to_match_yaml_marker() -> None:
     text = "\n".join(
         [

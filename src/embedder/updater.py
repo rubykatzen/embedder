@@ -31,13 +31,14 @@ class FileUpdate:
 
 def check_blocks(
     blocks: list[EmbedderBlock],
-    providers: list[Provider] = DEFAULT_PROVIDERS,
+    providers: list[Provider] | None = None,
 ) -> list[CheckResult]:
+    _providers = providers if providers is not None else DEFAULT_PROVIDERS
     resolved_cache: dict[str, AnyRef] = {}
     results: list[CheckResult] = []
 
     for block in blocks:
-        provider = get_provider(block.ref.render(), providers)
+        provider = get_provider(block.ref.render(), _providers)
         key = provider.cache_key(block.ref)
         if key is not None:
             if key in resolved_cache:
@@ -54,8 +55,9 @@ def check_blocks(
 
 def update_files(
     paths: list[Path],
-    providers: list[Provider] = DEFAULT_PROVIDERS,
+    providers: list[Provider] | None = None,
 ) -> list[FileUpdate]:
+    _providers = providers if providers is not None else DEFAULT_PROVIDERS
     changed: list[FileUpdate] = []
 
     for path in iter_files(paths):
@@ -63,16 +65,16 @@ def update_files(
             text = path.read_text(encoding="utf-8")
         except UnicodeDecodeError:
             continue
-        blocks = parse_blocks(path, text)
+        blocks = parse_blocks(path, text, _providers)
         if not blocks:
             continue
 
-        checks = check_blocks(blocks, providers)
+        checks = check_blocks(blocks, _providers)
         updates: list[BlockUpdate] = []
         changed_checks: list[CheckResult] = []
 
         for check in checks:
-            provider = get_provider(check.block.ref.render(), providers)
+            provider = get_provider(check.block.ref.render(), _providers)
             if not check.update_available and not provider.always_refresh(check.block.ref):
                 continue
             new_body = provider.fetch(check.latest_ref, path.parent)

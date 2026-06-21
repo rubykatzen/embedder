@@ -30,8 +30,9 @@ class Provider(Protocol):
 DEFAULT_PROVIDERS: list[Provider] = [GitHubProvider(), LocalProvider()]
 
 
-def get_provider(raw: str, providers: list[Provider] = DEFAULT_PROVIDERS) -> Provider:
-    for provider in providers:
+def get_provider(raw: str, providers: list[Provider] | None = None) -> Provider:
+    _providers = providers if providers is not None else DEFAULT_PROVIDERS
+    for provider in _providers:
         if provider.matches(raw):
             return provider
     raise RefError(f"Unknown ref scheme: {raw!r}")
