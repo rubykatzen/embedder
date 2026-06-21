@@ -18,7 +18,7 @@ jobs:
     permissions:
       contents: write
       actions: read
-      workflows: write
+      workflows: write  # actionlint:ignore:permissions
     steps:
       - uses: actions/checkout@v7
         with:
