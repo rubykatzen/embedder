@@ -7,11 +7,6 @@ on:
         required: false
         type: string
         default: "."
-      embedder-ref:
-        description: Git ref to install embedder from.
-        required: false
-        type: string
-        default: main
     secrets:
       token:
         description: GitHub token for accessing private fragment source repositories.
@@ -28,7 +23,7 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install embedder
-        run: pip install "git+https://github.com/rubykatzen/embedder.git@${{ inputs.embedder-ref }}"
+        run: pip install "git+https://github.com/rubykatzen/embedder.git@v0.0.5"
       - name: Run embedder update
         env:
           GH_TOKEN: ${{ secrets.token || github.token }}
