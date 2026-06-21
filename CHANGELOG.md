@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.6] - 2026-06-21
+
+- fix: trigger Homebrew tap update without workflow inputs (#10)
+
 ## [v0.0.5] - 2026-06-21
 
 - fix: install embedder from pinned release
