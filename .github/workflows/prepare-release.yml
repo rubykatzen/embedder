@@ -39,6 +39,13 @@ jobs:
       - uses: rubykatzen/releaser/.github/actions/bump-pyproject-version@v0.3.4
         with:
           version: ${{ inputs.version }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Refresh local fragments
+        run: |
+          pip install -e .
+          embedder update .
       - uses: rubykatzen/releaser/.github/actions/push-release-branch@v0.3.4
         with:
           version: ${{ inputs.version }}
