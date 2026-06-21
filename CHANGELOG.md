@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+## [v0.1.0] - 2026-06-21
+
+- fix: remove invalid workflows permission, disable bump-shared-workflow-version step
+- fix: suppress actionlint false positive for workflows permission scope
+- fix: add workflows permission for bump-shared-workflow-version step
+- chore(deps): bump rubykatzen/releaser from 0.3.4 to 0.5.0 (#15)
+- feat: extensible format and provider system (#14)
+
 ## [v0.0.6] - 2026-06-21
 
 - fix: trigger Homebrew tap update without workflow inputs (#10)
