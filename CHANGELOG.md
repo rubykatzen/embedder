@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [v0.1.3] - 2026-06-22
+
+- fix: use explicit repo ref for open-fragments-pr in shared workflow
+
 ## [v0.1.2] - 2026-06-22
 
 - fix: bump install-embedder reference to v0.1 in shared workflow
