@@ -37,4 +37,4 @@ jobs:
           fi
       - name: Open pull request
         if: steps.diff.outputs.changed == 'true'
-        uses: ./.github/actions/open-fragments-pr
+        uses: rubykatzen/embedder/.github/actions/open-fragments-pr@v0.1
