@@ -19,7 +19,7 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v7
-      - uses: rubykatzen/embedder/.github/actions/install-embedder@v0.0.6
+      - uses: rubykatzen/embedder/.github/actions/install-embedder@v0.1
       - name: Run embedder update
         env:
           GH_TOKEN: ${{ secrets.token || github.token }}
