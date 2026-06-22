@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [v0.1.2] - 2026-06-22
+
+- fix: bump install-embedder reference to v0.1 in shared workflow
+
 ## [v0.1.1] - 2026-06-22
 
 - chore: pin releaser actions to minor versions instead of patch (#21)
