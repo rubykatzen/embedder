@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [v0.1.1] - 2026-06-22
+
+- chore: pin releaser actions to minor versions instead of patch (#21)
+
 ## [v0.1.0] - 2026-06-21
 
 - fix: remove invalid workflows permission, disable bump-shared-workflow-version step
