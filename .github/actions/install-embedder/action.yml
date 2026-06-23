@@ -5,4 +5,4 @@ runs:
   steps:
     - name: Install
       shell: bash
-      run: pip install "git+https://github.com/rubykatzen/embedder.git@${{ github.action_ref }}"
+      run: pip install "git+https://github.com/rubykatzen/embedder.git@v0.1"
