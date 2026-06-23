@@ -32,6 +32,10 @@ class GitHubAssetRef:
     def repository(self) -> str:
         return f"{self.owner}/{self.repo}"
 
+    @property
+    def is_pinned(self) -> bool:
+        return self.tag is not None and bool(_SEMVER_RE.match(self.tag))
+
     def with_tag(self, tag: str) -> GitHubAssetRef:
         return GitHubAssetRef(owner=self.owner, repo=self.repo, asset=self.asset, tag=tag)
 
@@ -79,20 +83,11 @@ class GitHubProvider:
         self.require()
         return ref
 
-    def resolve_cached(self, ref: GitHubAssetRef, cached: GitHubAssetRef) -> GitHubAssetRef:
-        return ref
-
     def always_refresh(self, ref: GitHubAssetRef) -> bool:
-        # Tagless (auto-latest) and branch refs need content re-fetched every run.
-        if ref.tag is None:
-            return True
-        return not _SEMVER_RE.match(ref.tag)
+        return not ref.is_pinned
 
     def fetch(self, ref: GitHubAssetRef, base_dir: Path) -> str:
         return self._fetch_file(ref)
-
-    def cache_key(self, ref: GitHubAssetRef) -> str | None:
-        return None
 
     def available(self) -> bool:
         return shutil.which("gh") is not None

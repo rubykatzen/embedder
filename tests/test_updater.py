@@ -1,4 +1,3 @@
-import re
 from pathlib import Path
 
 import pytest
@@ -10,9 +9,6 @@ from embedder.providers.github import GitHubAssetRef, parse_github_ref
 from embedder.providers.local import LocalProvider, LocalRef
 from embedder.updater import check_blocks, update_files
 from tests.helpers import close_marker, marker
-
-_SEMVER_RE = re.compile(r"^v?\d+(\.\d+)*$")
-
 
 class FakeGitHubProvider:
     def __init__(self) -> None:
@@ -33,19 +29,11 @@ class FakeGitHubProvider:
         self.resolve_calls += 1
         return ref
 
-    def resolve_cached(self, ref: GitHubAssetRef, cached: GitHubAssetRef) -> GitHubAssetRef:
-        return ref
-
     def always_refresh(self, ref: GitHubAssetRef) -> bool:
-        if ref.tag is None:
-            return True
-        return not _SEMVER_RE.match(ref.tag)
+        return not ref.is_pinned
 
     def fetch(self, ref: GitHubAssetRef, base_dir: Path) -> str:
         return self.contents[(ref.repository, ref.asset)]
-
-    def cache_key(self, ref: GitHubAssetRef) -> str | None:
-        return None
 
 
 def fake_providers() -> list[Provider]:

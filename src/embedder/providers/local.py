@@ -27,9 +27,6 @@ class LocalProvider:
     def resolve(self, ref: LocalRef) -> LocalRef:
         return ref
 
-    def resolve_cached(self, ref: LocalRef, cached: LocalRef) -> LocalRef:
-        return ref
-
     def always_refresh(self, ref: LocalRef) -> bool:
         return True
 
@@ -44,5 +41,3 @@ class LocalProvider:
             raise EmbedderError(f"Local fragment not found: {target}")
         return target.read_text(encoding="utf-8")
 
-    def cache_key(self, ref: LocalRef) -> str | None:
-        return None

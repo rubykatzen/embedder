@@ -35,20 +35,11 @@ def check_blocks(
     providers: list[Provider] | None = None,
 ) -> list[CheckResult]:
     _providers = providers if providers is not None else DEFAULT_PROVIDERS
-    resolved_cache: dict[str, AnyRef] = {}
     results: list[CheckResult] = []
 
     for block in blocks:
         provider = get_provider(block.ref.render(), _providers)
-        key = provider.cache_key(block.ref)
-        if key is not None:
-            if key in resolved_cache:
-                latest = provider.resolve_cached(block.ref, resolved_cache[key])
-            else:
-                latest = provider.resolve(block.ref)
-                resolved_cache[key] = latest
-        else:
-            latest = provider.resolve(block.ref)
+        latest = provider.resolve(block.ref)
         results.append(CheckResult(block=block, latest_ref=latest))
 
     return results
