@@ -38,9 +38,18 @@ def test_reject_invalid_github_ref() -> None:
         parse_github_ref("rubykatzen/embedder@v0.1.0:fragment.md")
 
 
-def test_reject_nested_asset_path() -> None:
-    with pytest.raises(RefError, match="basename"):
-        parse_github_ref("github.com/rubykatzen/embedder@v0.1.0:fragments/fragment.md")
+def test_asset_path_with_subdirectory() -> None:
+    ref = parse_github_ref("github.com/rubykatzen/embedder@v0.1.0:docs/fragments/fragment.md")
+
+    assert ref.asset == "docs/fragments/fragment.md"
+    assert ref.render() == "github.com/rubykatzen/embedder:docs/fragments/fragment.md"
+
+
+def test_parse_github_ref_branch() -> None:
+    ref = parse_github_ref("github.com/rubykatzen/embedder@main:fragment.md")
+
+    assert ref.tag == "main"
+    assert ref.render() == "github.com/rubykatzen/embedder:fragment.md"
 
 
 def test_parse_ref_dispatches_github() -> None:
