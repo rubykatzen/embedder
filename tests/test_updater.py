@@ -10,6 +10,7 @@ from embedder.providers.local import LocalProvider, LocalRef
 from embedder.updater import check_blocks, update_files
 from tests.helpers import close_marker, marker
 
+
 class FakeGitHubProvider:
     def __init__(self) -> None:
         self.contents: dict[tuple[str, str], str] = {
