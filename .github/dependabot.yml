@@ -1,4 +1,4 @@
-# embedder local:fragments/dependabot.yaml
+# embedder ./fragments/dependabot.yaml
 version: 2
 updates:
   - package-ecosystem: pip
