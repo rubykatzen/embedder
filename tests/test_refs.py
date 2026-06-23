@@ -56,11 +56,11 @@ def test_parse_ref_dispatches_github() -> None:
 
 
 def test_parse_ref_dispatches_local() -> None:
-    ref = parse_ref("local:fragments/file.md")
+    ref = parse_ref("./fragments/file.md")
 
     assert isinstance(ref, LocalRef)
     assert ref.path == "fragments/file.md"
-    assert ref.render() == "local:fragments/file.md"
+    assert ref.render() == "./fragments/file.md"
 
 
 def test_parse_ref_rejects_unknown_scheme() -> None:

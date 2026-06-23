@@ -159,7 +159,7 @@ def test_local_ref_is_always_current(tmp_path: Path) -> None:
     target.write_text(
         "\n".join(
             [
-                marker("local:fragment.md"),
+                marker("./fragment.md"),
                 "old content",
                 close_marker(),
                 "",
@@ -213,7 +213,7 @@ def test_local_ref_body_refreshed_on_update(tmp_path: Path) -> None:
 
     target = tmp_path / "README.md"
     target.write_text(
-        "\n".join([marker("local:frag.md"), "old content", close_marker(), ""]),
+        "\n".join([marker("./frag.md"), "old content", close_marker(), ""]),
         encoding="utf-8",
     )
 
@@ -242,7 +242,7 @@ def test_local_only_skips_github_blocks(tmp_path: Path) -> None:
                 marker("github.com/rubykatzen/embedder@v0.1.0:fragment.md"),
                 "old github",
                 close_marker(),
-                marker("local:frag.md"),
+                marker("./frag.md"),
                 "old local",
                 close_marker(),
                 "",
@@ -265,7 +265,7 @@ def test_local_only_does_not_call_github_resolve(tmp_path: Path) -> None:
 
     target = tmp_path / "README.md"
     target.write_text(
-        "\n".join([marker("local:frag.md"), "old", close_marker(), ""]),
+        "\n".join([marker("./frag.md"), "old", close_marker(), ""]),
         encoding="utf-8",
     )
 
