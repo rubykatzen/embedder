@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import base64
 import re
 import shutil
 import subprocess
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -13,26 +13,30 @@ _REF_RE = re.compile(
     r"^github\.com/"
     r"(?P<owner>[A-Za-z0-9_.-]+)/"
     r"(?P<repo>[A-Za-z0-9_.-]+)"
-    r"@(?P<tag>[^:\s]+)"
+    r"(?:@(?P<tag>[^:\s]+))?"
     r":(?P<asset>[^\s]+)$"
 )
+
+_SEMVER_RE = re.compile(r"^v?\d+(\.\d+)*$")
 
 
 @dataclass(frozen=True)
 class GitHubAssetRef:
     owner: str
     repo: str
-    tag: str
     asset: str
+    tag: str | None = None
 
     @property
     def repository(self) -> str:
         return f"{self.owner}/{self.repo}"
 
     def with_tag(self, tag: str) -> GitHubAssetRef:
-        return GitHubAssetRef(owner=self.owner, repo=self.repo, tag=tag, asset=self.asset)
+        return GitHubAssetRef(owner=self.owner, repo=self.repo, asset=self.asset, tag=tag)
 
     def render(self) -> str:
+        if self.tag is None:
+            return f"github.com/{self.repository}:{self.asset}"
         return f"github.com/{self.repository}@{self.tag}:{self.asset}"
 
 
@@ -40,14 +44,11 @@ def parse_github_ref(raw: str) -> GitHubAssetRef:
     match = _REF_RE.match(raw.strip())
     if not match:
         raise RefError(f"Invalid embedder ref: {raw}")
-    asset = match["asset"]
-    if "/" in asset or "\\" in asset:
-        raise RefError(f"Release asset must be a basename: {asset}")
     return GitHubAssetRef(
         owner=match["owner"],
         repo=match["repo"],
-        tag=match["tag"],
-        asset=asset,
+        asset=match["asset"],
+        tag=match.group("tag"),
     )
 
 
@@ -66,19 +67,24 @@ class GitHubProvider:
         return parse_github_ref(raw)
 
     def resolve(self, ref: GitHubAssetRef) -> GitHubAssetRef:
+        if ref.tag is not None:
+            return ref
         return ref.with_tag(self._latest_tag(ref))
 
     def resolve_cached(self, ref: GitHubAssetRef, cached: GitHubAssetRef) -> GitHubAssetRef:
+        if ref.tag is not None:
+            return ref
         return ref.with_tag(cached.tag)
 
     def always_refresh(self, ref: GitHubAssetRef) -> bool:
-        return False
+        # Branch-like refs (non-semver) can change content over time
+        return ref.tag is not None and not _SEMVER_RE.match(ref.tag)
 
     def fetch(self, ref: GitHubAssetRef, base_dir: Path) -> str:
-        return self._download_asset(ref)
+        return self._fetch_file(ref)
 
-    def cache_key(self, ref: GitHubAssetRef) -> str:
-        return ref.repository
+    def cache_key(self, ref: GitHubAssetRef) -> str | None:
+        return ref.repository if ref.tag is None else None
 
     def available(self) -> bool:
         return shutil.which("gh") is not None
@@ -109,28 +115,21 @@ class GitHubProvider:
 
     def _latest_tag(self, ref: GitHubAssetRef) -> str:
         result = self.run(
-            ["release", "view", "--repo", ref.repository, "--json", "tagName", "--jq", ".tagName"]
+            ["api", f"repos/{ref.repository}/releases/latest", "--jq", ".tag_name"]
         )
         if not result.stdout or result.stdout == "null":
             raise EmbedderError(f"Could not resolve latest release for {ref.repository}")
         return result.stdout
 
-    def _download_asset(self, ref: GitHubAssetRef) -> str:
-        with tempfile.TemporaryDirectory(prefix="embedder-") as tmpdir:
-            self.run(
-                [
-                    "release",
-                    "download",
-                    ref.tag,
-                    "--repo",
-                    ref.repository,
-                    "--pattern",
-                    ref.asset,
-                    "--dir",
-                    tmpdir,
-                ]
-            )
-            path = Path(tmpdir) / ref.asset
-            if not path.is_file():
-                raise EmbedderError(f"Release asset not found: {ref.render()}")
-            return path.read_text(encoding="utf-8")
+    def _fetch_file(self, ref: GitHubAssetRef) -> str:
+        if ref.tag is None:
+            raise EmbedderError(f"Cannot fetch file without a resolved ref: {ref.render()}")
+        result = self.run(
+            [
+                "api",
+                f"repos/{ref.repository}/contents/{ref.asset}?ref={ref.tag}",
+                "--jq",
+                ".content",
+            ]
+        )
+        return base64.b64decode(result.stdout).decode("utf-8")

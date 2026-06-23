@@ -14,8 +14,10 @@ from tests.helpers import close_marker, marker
 class FakeGitHubProvider:
     def __init__(self) -> None:
         self.latest: dict[str, str] = {"rubykatzen/embedder": "v0.2.0"}
-        self.assets: dict[str, str] = {
-            "github.com/rubykatzen/embedder@v0.2.0:fragment.md": "new managed text\n",
+        self.contents: dict[tuple[str, str], str] = {
+            ("rubykatzen/embedder", "fragment.md"): "new managed text\n",
+            ("rubykatzen/embedder", "first.md"): "first content\n",
+            ("rubykatzen/embedder", "second.md"): "second content\n",
         }
         self.resolve_calls = 0
 
@@ -26,20 +28,24 @@ class FakeGitHubProvider:
         return parse_github_ref(raw)
 
     def resolve(self, ref: GitHubAssetRef) -> GitHubAssetRef:
+        if ref.tag is not None:
+            return ref
         self.resolve_calls += 1
         return ref.with_tag(self.latest[ref.repository])
 
     def resolve_cached(self, ref: GitHubAssetRef, cached: GitHubAssetRef) -> GitHubAssetRef:
+        if ref.tag is not None:
+            return ref
         return ref.with_tag(cached.tag)
 
     def always_refresh(self, ref: GitHubAssetRef) -> bool:
         return False
 
     def fetch(self, ref: GitHubAssetRef, base_dir: Path) -> str:
-        return self.assets[ref.render()]
+        return self.contents[(ref.repository, ref.asset)]
 
-    def cache_key(self, ref: GitHubAssetRef) -> str:
-        return ref.repository
+    def cache_key(self, ref: GitHubAssetRef) -> str | None:
+        return ref.repository if ref.tag is None else None
 
 
 def fake_providers() -> list[Provider]:
@@ -49,7 +55,7 @@ def fake_providers() -> list[Provider]:
 def test_check_blocks_marks_updates() -> None:
     text = "\n".join(
         [
-            marker("github.com/rubykatzen/embedder@v0.1.0:fragment.md"),
+            marker("github.com/rubykatzen/embedder:fragment.md"),
             "old",
             close_marker(),
             "",
@@ -70,7 +76,7 @@ def test_update_files_replaces_only_managed_body(tmp_path: Path) -> None:
         "\n".join(
             [
                 "before",
-                marker("github.com/rubykatzen/embedder@v0.1.0:fragment.md"),
+                marker("github.com/rubykatzen/embedder:fragment.md"),
                 "old managed text",
                 close_marker(),
                 "after",
@@ -86,7 +92,7 @@ def test_update_files_replaces_only_managed_body(tmp_path: Path) -> None:
     assert target.read_text(encoding="utf-8") == "\n".join(
         [
             "before",
-            marker("github.com/rubykatzen/embedder@v0.2.0:fragment.md"),
+            marker("github.com/rubykatzen/embedder:fragment.md"),
             "new managed text",
             close_marker(),
             "after",
@@ -128,10 +134,10 @@ def test_apply_update_keeps_body_trailing_newline() -> None:
 def test_check_blocks_caches_resolve_per_repository() -> None:
     text = "\n".join(
         [
-            marker("github.com/rubykatzen/embedder@v0.1.0:first.md"),
+            marker("github.com/rubykatzen/embedder:first.md"),
             "old",
             close_marker(),
-            marker("github.com/rubykatzen/embedder@v0.1.0:second.md"),
+            marker("github.com/rubykatzen/embedder:second.md"),
             "old",
             close_marker(),
             "",
@@ -182,10 +188,10 @@ def test_cache_uses_correct_asset_per_block() -> None:
     """Two blocks from the same repo must not share each other's asset."""
     text = "\n".join(
         [
-            marker("github.com/rubykatzen/embedder@v0.1.0:first.md"),
+            marker("github.com/rubykatzen/embedder:first.md"),
             "old",
             close_marker(),
-            marker("github.com/rubykatzen/embedder@v0.1.0:second.md"),
+            marker("github.com/rubykatzen/embedder:second.md"),
             "old",
             close_marker(),
             "",
