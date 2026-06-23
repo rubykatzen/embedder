@@ -42,8 +42,8 @@ jobs:
       # - uses: ./.github/actions/bump-shared-workflow-version
       #   with:
       #     version: ${{ inputs.version }}
-      - uses: ./.github/actions/install-embedder
-      - uses: ./.github/actions/refresh-local-fragments
-      - uses: rubykatzen/releaser/.github/actions/push-release-branch@v0.5
-        with:
-          version: ${{ inputs.version }}
+      # - uses: ./.github/actions/install-embedder
+      # - uses: ./.github/actions/refresh-local-fragments
+      # - uses: rubykatzen/releaser/.github/actions/push-release-branch@v0.5
+      #   with:
+      #     version: ${{ inputs.version }}
