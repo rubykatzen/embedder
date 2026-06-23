@@ -131,8 +131,9 @@ embedder doctor
 `embedder scan` finds all managed blocks in text files and prints their source
 repository, ref, file path, and containing file.
 
-`embedder check` resolves each block against the latest source release and exits
-non-zero when updates are available.
+`embedder check` resolves each block's ref and exits non-zero when updates are
+available. Auto-latest and branch markers are not reported as pending updates by
+`check`; they are refreshed unconditionally by `update`.
 
 `embedder update` fetches the current file for each managed block and replaces
 only the managed body. The marker ref is preserved as-is; pinned tags are never

@@ -11,6 +11,7 @@ from embedder.blocks import (
     parse_blocks,
 )
 from embedder.providers import DEFAULT_PROVIDERS, AnyRef, Provider, get_provider
+from embedder.providers.local import LocalProvider
 
 
 @dataclass(frozen=True)
@@ -81,7 +82,7 @@ def update_files(
 
         for check in checks:
             provider = get_provider(check.block.ref.render(), _providers)
-            if local_only and not provider.always_refresh(check.block.ref):
+            if local_only and not isinstance(provider, LocalProvider):
                 continue
             if not check.update_available and not provider.always_refresh(check.block.ref):
                 continue

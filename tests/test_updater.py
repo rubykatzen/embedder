@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import pytest
@@ -10,10 +11,11 @@ from embedder.providers.local import LocalProvider, LocalRef
 from embedder.updater import check_blocks, update_files
 from tests.helpers import close_marker, marker
 
+_SEMVER_RE = re.compile(r"^v?\d+(\.\d+)*$")
+
 
 class FakeGitHubProvider:
     def __init__(self) -> None:
-        self.latest: dict[str, str] = {"rubykatzen/embedder": "v0.2.0"}
         self.contents: dict[tuple[str, str], str] = {
             ("rubykatzen/embedder", "fragment.md"): "new managed text\n",
             ("rubykatzen/embedder", "first.md"): "first content\n",
@@ -28,31 +30,30 @@ class FakeGitHubProvider:
         return parse_github_ref(raw)
 
     def resolve(self, ref: GitHubAssetRef) -> GitHubAssetRef:
-        if ref.tag is not None:
-            return ref
         self.resolve_calls += 1
-        return ref.with_tag(self.latest[ref.repository])
+        return ref
 
     def resolve_cached(self, ref: GitHubAssetRef, cached: GitHubAssetRef) -> GitHubAssetRef:
-        if ref.tag is not None:
-            return ref
-        return ref.with_tag(cached.tag)
+        return ref
 
     def always_refresh(self, ref: GitHubAssetRef) -> bool:
-        return False
+        if ref.tag is None:
+            return True
+        return not _SEMVER_RE.match(ref.tag)
 
     def fetch(self, ref: GitHubAssetRef, base_dir: Path) -> str:
         return self.contents[(ref.repository, ref.asset)]
 
     def cache_key(self, ref: GitHubAssetRef) -> str | None:
-        return ref.repository if ref.tag is None else None
+        return None
 
 
 def fake_providers() -> list[Provider]:
     return [FakeGitHubProvider(), LocalProvider()]
 
 
-def test_check_blocks_marks_updates() -> None:
+def test_check_blocks_tagless_ref_not_update_pending() -> None:
+    """Auto-latest refs are always-refresh; check() doesn't report them as pending updates."""
     text = "\n".join(
         [
             marker("github.com/rubykatzen/embedder:fragment.md"),
@@ -66,8 +67,8 @@ def test_check_blocks_marks_updates() -> None:
     results = check_blocks(blocks, fake_providers())
 
     assert len(results) == 1
-    assert results[0].latest_ref.render() == "github.com/rubykatzen/embedder@v0.2.0:fragment.md"
-    assert results[0].update_available
+    assert not results[0].update_available
+    assert results[0].latest_ref.render() == "github.com/rubykatzen/embedder:fragment.md"
 
 
 def test_update_files_replaces_only_managed_body(tmp_path: Path) -> None:
@@ -131,7 +132,8 @@ def test_apply_update_keeps_body_trailing_newline() -> None:
     )
 
 
-def test_check_blocks_caches_resolve_per_repository() -> None:
+def test_check_blocks_calls_resolve_per_block() -> None:
+    """resolve() is called once per block (no caching); it's a no-op for all ref types."""
     text = "\n".join(
         [
             marker("github.com/rubykatzen/embedder:first.md"),
@@ -148,7 +150,7 @@ def test_check_blocks_caches_resolve_per_repository() -> None:
 
     check_blocks(blocks, [provider, LocalProvider()])
 
-    assert provider.resolve_calls == 1
+    assert provider.resolve_calls == 2
 
 
 def test_local_ref_is_always_current(tmp_path: Path) -> None:
@@ -202,8 +204,8 @@ def test_cache_uses_correct_asset_per_block() -> None:
 
     results = check_blocks(blocks, registry)
 
-    assert results[0].latest_ref.render() == "github.com/rubykatzen/embedder@v0.2.0:first.md"
-    assert results[1].latest_ref.render() == "github.com/rubykatzen/embedder@v0.2.0:second.md"
+    assert results[0].latest_ref.render() == "github.com/rubykatzen/embedder:first.md"
+    assert results[1].latest_ref.render() == "github.com/rubykatzen/embedder:second.md"
 
 
 def test_local_ref_body_refreshed_on_update(tmp_path: Path) -> None:

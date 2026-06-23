@@ -6,6 +6,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import quote
 
 from embedder.errors import EmbedderEnvironmentError, EmbedderError, RefError
 
@@ -44,10 +45,16 @@ def parse_github_ref(raw: str) -> GitHubAssetRef:
     match = _REF_RE.match(raw.strip())
     if not match:
         raise RefError(f"Invalid embedder ref: {raw}")
+    asset = match["asset"]
+    parts = asset.split("/")
+    if asset.startswith("/") or ".." in parts or "." in parts:
+        raise RefError(
+            f"Asset path must be a relative path without '.' or '..' segments: {asset!r}"
+        )
     return GitHubAssetRef(
         owner=match["owner"],
         repo=match["repo"],
-        asset=match["asset"],
+        asset=asset,
         tag=match.group("tag"),
     )
 
@@ -67,24 +74,25 @@ class GitHubProvider:
         return parse_github_ref(raw)
 
     def resolve(self, ref: GitHubAssetRef) -> GitHubAssetRef:
-        if ref.tag is not None:
-            return ref
-        return ref.with_tag(self._latest_tag(ref))
+        # Validate gh is available for any GitHub ref, then return as-is.
+        # Tagless and branch refs are handled via always_refresh + fetch.
+        self.require()
+        return ref
 
     def resolve_cached(self, ref: GitHubAssetRef, cached: GitHubAssetRef) -> GitHubAssetRef:
-        if ref.tag is not None:
-            return ref
-        return ref.with_tag(cached.tag)
+        return ref
 
     def always_refresh(self, ref: GitHubAssetRef) -> bool:
-        # Branch-like refs (non-semver) can change content over time
-        return ref.tag is not None and not _SEMVER_RE.match(ref.tag)
+        # Tagless (auto-latest) and branch refs need content re-fetched every run.
+        if ref.tag is None:
+            return True
+        return not _SEMVER_RE.match(ref.tag)
 
     def fetch(self, ref: GitHubAssetRef, base_dir: Path) -> str:
         return self._fetch_file(ref)
 
     def cache_key(self, ref: GitHubAssetRef) -> str | None:
-        return ref.repository if ref.tag is None else None
+        return None
 
     def available(self) -> bool:
         return shutil.which("gh") is not None
@@ -122,14 +130,19 @@ class GitHubProvider:
         return result.stdout
 
     def _fetch_file(self, ref: GitHubAssetRef) -> str:
-        if ref.tag is None:
-            raise EmbedderError(f"Cannot fetch file without a resolved ref: {ref.render()}")
+        tag = ref.tag if ref.tag is not None else self._latest_tag(ref)
+        encoded_asset = quote(ref.asset, safe="/")
+        encoded_tag = quote(tag, safe="")
         result = self.run(
             [
                 "api",
-                f"repos/{ref.repository}/contents/{ref.asset}?ref={ref.tag}",
+                f"repos/{ref.repository}/contents/{encoded_asset}?ref={encoded_tag}",
                 "--jq",
                 ".content",
             ]
         )
+        if not result.stdout or result.stdout == "null":
+            raise EmbedderError(
+                f"File not found or not a regular file: {ref.render()!r}"
+            )
         return base64.b64decode(result.stdout).decode("utf-8")
