@@ -5,6 +5,37 @@ on:
   pull_request:
   workflow_dispatch:
 jobs:
+  check-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check linters match pre-commit config
+        run: |
+          python3 - <<'EOF'
+          import yaml, sys
+
+          with open(".github/workflows/lint.yml") as f:
+              workflow = yaml.safe_load(f)
+          with open(".pre-commit-config.yaml") as f:
+              precommit = yaml.safe_load(f)
+
+          workflow_linters = set(workflow["jobs"]["lint"]["with"]["linters"].split(","))
+
+          baseline_hooks = set()
+          for repo in precommit["repos"]:
+              if "rubykatzen/baseline" in repo["repo"]:
+                  baseline_hooks = {h["id"] for h in repo["hooks"]}
+                  break
+
+          if workflow_linters != baseline_hooks:
+              print("Linter mismatch!")
+              print(f"  lint.yml:          {sorted(workflow_linters)}")
+              print(f"  pre-commit config: {sorted(baseline_hooks)}")
+              sys.exit(1)
+
+          print(f"In sync: {sorted(workflow_linters)}")
+          EOF
+
   lint:
     uses: rubykatzen/baseline/.github/workflows/lint-shared.yml@v0.7
     with:
