@@ -11,23 +11,20 @@ class LocalRef:
     path: str
 
     def render(self) -> str:
-        return f"local:{self.path}"
+        return f"./{self.path}"
 
 
 class LocalProvider:
     def matches(self, raw: str) -> bool:
-        return raw.startswith("local:")
+        return raw.startswith("./")
 
     def parse_ref(self, raw: str) -> LocalRef:
-        path = raw[len("local:"):]
+        path = raw[len("./"):]
         if not path:
-            raise RefError("local: ref must specify a path")
+            raise RefError("local ref must specify a path")
         return LocalRef(path=path)
 
     def resolve(self, ref: LocalRef) -> LocalRef:
-        return ref
-
-    def resolve_cached(self, ref: LocalRef, cached: LocalRef) -> LocalRef:
         return ref
 
     def always_refresh(self, ref: LocalRef) -> bool:
@@ -44,5 +41,3 @@ class LocalProvider:
             raise EmbedderError(f"Local fragment not found: {target}")
         return target.read_text(encoding="utf-8")
 
-    def cache_key(self, ref: LocalRef) -> str | None:
-        return None

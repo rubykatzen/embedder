@@ -18,8 +18,8 @@ Embedder treats a fragment embedded inside any text file as a dependency.
 ```text
 consumer text file
   contains embedded block marker
-    points to GitHub repository + release tag + release asset
-      Embedder downloads latest fragment asset
+    points to GitHub repository + ref + file path
+      Embedder fetches the file at that ref via the GitHub contents API
         replaces only the managed block body
           opens a pull request
 ```
@@ -32,99 +32,81 @@ marked blocks, not the surrounding file.
 Managed blocks use one-line markers:
 
 ```markdown
-<!-- embedder github.com/OWNER/REPO@v0.3.0:ASSET.md -->
+<!-- embedder github.com/OWNER/REPO@v0.3.0:path/to/file.md -->
 managed text goes here
 <!-- /embedder -->
 ```
 
-Example:
+The closing marker is always `<!-- /embedder -->`. Everything between the
+markers is managed by Embedder. Everything outside is local to the consuming
+repository.
+
+### Ref modes
+
+**Auto-latest** — omit the tag to always track the latest release. The marker
+stays tagless; no version is written back, so there are no circular update
+loops:
 
 ```markdown
-<!-- embedder github.com/dupmachine/agent-guidelines@v0.3.0:agent-message-prefix.md -->
-## Message Prefix
-
-Prefix every user-visible agent message with the agent emoji followed by the
-repository name in square brackets:
-
-`EMOJI [OWNER/REPO]:`
-<!-- /embedder -->
+<!-- embedder github.com/OWNER/REPO:path/to/file.md -->
 ```
 
-The marker means:
-
-- `github.com/OWNER/REPO` is the fragment source repository.
-- `v0.3.0` is the currently pinned GitHub Release tag.
-- `ASSET.md` is the release asset to embed. Asset names must be basenames, not
-  nested paths.
-
-The closing marker is always:
+**Pinned** — include a semver tag to freeze the content at a specific release.
+Embedder never bumps a pinned marker automatically:
 
 ```markdown
-<!-- /embedder -->
+<!-- embedder github.com/OWNER/REPO@v0.3.0:path/to/file.md -->
 ```
 
-Everything between the markers is managed by Embedder and may be overwritten on
-update. Everything outside the markers is local to the consuming repository.
+**Branch** — include a non-semver ref to track a branch or commit. Content is
+re-fetched on every update run; the marker ref is never changed:
 
-## Releases
+```markdown
+<!-- embedder github.com/OWNER/REPO@main:path/to/file.md -->
+```
 
-Fragment source repositories publish fragments as GitHub Release assets.
+### File paths
 
-Assets do not need to be archives. A release may attach plain text files such as:
+The file path is relative to the repository root and may include subdirectories:
+
+```markdown
+<!-- embedder github.com/OWNER/REPO@v0.3.0:docs/fragments/policy.md -->
+```
+
+## Fragment Sources
+
+Embedder fetches files directly from a GitHub repository's file tree using the
+GitHub contents API. Any file committed at the target ref is a valid fragment
+source — no need to attach files as release assets.
+
+Embedder publishes its own introductory fragments under the `fragments/`
+directory:
 
 ```text
-agent-message-prefix.md
-review-policy.md
-security-guidance.md
-fragments.yml
+fragments/embedder-for-readmes.md
+fragments/embedder-for-agents.md
 ```
 
-Embedder publishes its own introductory fragments:
-
-```text
-embedder-for-readmes.md
-embedder-for-agents.md
-```
-
-These fragments explain managed blocks to people and coding agents. Consumers can
-embed them in README or `AGENTS.md` files to make the source-repository workflow
+These explain managed blocks to people and coding agents. Consumers can embed
+them in README or `AGENTS.md` files to make the source-repository workflow
 explicit.
-
-The source repository may store and build these assets however it wants. The
-published release assets are the external contract consumed by Embedder.
-
-Fragment source repositories can use the upload action to attach fragment assets
-to a GitHub Release:
-
-```yaml
-- uses: rubykatzen/embedder/.github/actions/upload-fragments@v0
-  with:
-    release-tag: v1.2.3
-    fragments-directory: fragments
-```
-
-`fragments-directory` defaults to `fragments`.
 
 ## Versioning
 
-Embedder always updates to the latest GitHub Release.
+Auto-latest markers resolve to the latest GitHub Release. GitHub prereleases are
+not considered latest releases. Publish normal releases when consumers should
+receive updates.
 
-GitHub prereleases are not considered latest releases by the MVP implementation.
-Publish fragments as normal GitHub Releases when consumers should receive them.
-
-SemVer tags such as `v0.3.0` are allowed for consistency with existing release
-tooling, but Embedder does not implement major/minor/patch update strategies or
-version constraints.
-
-If a fragment needs fundamentally different behavior, publish it as a different
-asset name instead of relying on compatibility semantics.
+Embedder does not implement major/minor/patch update strategies or version
+constraints. If a fragment needs fundamentally different behavior, publish it
+under a different file path instead of relying on compatibility semantics.
 
 ## Private Sources
 
 Fragment sources may be public or private.
 
-Public fragment assets can be downloaded without authentication. Private
-fragment assets require a token with read access to the source repository.
+Public fragment sources can be fetched without authentication. Private
+repositories require a token with read access to the source repository.
 
 This allows open source tooling in `rubykatzen/embedder` while keeping
 organization-specific agent policies in private repositories.
@@ -146,14 +128,16 @@ embedder update
 embedder doctor
 ```
 
-`embedder scan` finds all managed blocks in text files and prints their source,
-release, asset, and containing file.
+`embedder scan` finds all managed blocks in text files and prints their source
+repository, ref, file path, and containing file.
 
-`embedder check` resolves each block against the latest source release and exits
-non-zero when updates are available.
+`embedder check` resolves each block's ref and exits non-zero when updates are
+available. Auto-latest and branch markers are not reported as pending updates by
+`check`; they are refreshed unconditionally by `update`.
 
-`embedder update` downloads the latest release asset for each managed block,
-updates the marker tag, and replaces only the managed body.
+`embedder update` fetches the current file for each managed block and replaces
+only the managed body. The marker ref is preserved as-is; pinned tags are never
+bumped automatically.
 
 `embedder doctor` checks local prerequisites such as GitHub CLI availability and
 authentication.
@@ -247,8 +231,8 @@ brew tap rubykatzen/tap && brew install releaser
 
 - Works with arbitrary text files, not only Markdown.
 - Owns only explicitly marked blocks.
-- Uses GitHub Releases as the distribution mechanism.
-- Downloads release assets directly; fragments do not need to be zipped.
+- Fetches files via the GitHub contents API; any file in the repo tree is a
+  valid fragment source.
 - Supports public and private source repositories.
 - Does not execute code from source repositories.
 - Does not perform dependency solving or SemVer compatibility filtering.

@@ -10,12 +10,12 @@ from embedder.providers.local import LocalProvider, LocalRef
 from embedder.updater import check_blocks, update_files
 from tests.helpers import close_marker, marker
 
-
 class FakeGitHubProvider:
     def __init__(self) -> None:
-        self.latest: dict[str, str] = {"rubykatzen/embedder": "v0.2.0"}
-        self.assets: dict[str, str] = {
-            "github.com/rubykatzen/embedder@v0.2.0:fragment.md": "new managed text\n",
+        self.contents: dict[tuple[str, str], str] = {
+            ("rubykatzen/embedder", "fragment.md"): "new managed text\n",
+            ("rubykatzen/embedder", "first.md"): "first content\n",
+            ("rubykatzen/embedder", "second.md"): "second content\n",
         }
         self.resolve_calls = 0
 
@@ -27,29 +27,24 @@ class FakeGitHubProvider:
 
     def resolve(self, ref: GitHubAssetRef) -> GitHubAssetRef:
         self.resolve_calls += 1
-        return ref.with_tag(self.latest[ref.repository])
-
-    def resolve_cached(self, ref: GitHubAssetRef, cached: GitHubAssetRef) -> GitHubAssetRef:
-        return ref.with_tag(cached.tag)
+        return ref
 
     def always_refresh(self, ref: GitHubAssetRef) -> bool:
-        return False
+        return not ref.is_pinned
 
     def fetch(self, ref: GitHubAssetRef, base_dir: Path) -> str:
-        return self.assets[ref.render()]
-
-    def cache_key(self, ref: GitHubAssetRef) -> str:
-        return ref.repository
+        return self.contents[(ref.repository, ref.asset)]
 
 
 def fake_providers() -> list[Provider]:
     return [FakeGitHubProvider(), LocalProvider()]
 
 
-def test_check_blocks_marks_updates() -> None:
+def test_check_blocks_tagless_ref_not_update_pending() -> None:
+    """Auto-latest refs are always-refresh; check() doesn't report them as pending updates."""
     text = "\n".join(
         [
-            marker("github.com/rubykatzen/embedder@v0.1.0:fragment.md"),
+            marker("github.com/rubykatzen/embedder:fragment.md"),
             "old",
             close_marker(),
             "",
@@ -60,8 +55,8 @@ def test_check_blocks_marks_updates() -> None:
     results = check_blocks(blocks, fake_providers())
 
     assert len(results) == 1
-    assert results[0].latest_ref.render() == "github.com/rubykatzen/embedder@v0.2.0:fragment.md"
-    assert results[0].update_available
+    assert not results[0].update_available
+    assert results[0].latest_ref.render() == "github.com/rubykatzen/embedder:fragment.md"
 
 
 def test_update_files_replaces_only_managed_body(tmp_path: Path) -> None:
@@ -70,7 +65,7 @@ def test_update_files_replaces_only_managed_body(tmp_path: Path) -> None:
         "\n".join(
             [
                 "before",
-                marker("github.com/rubykatzen/embedder@v0.1.0:fragment.md"),
+                marker("github.com/rubykatzen/embedder:fragment.md"),
                 "old managed text",
                 close_marker(),
                 "after",
@@ -86,7 +81,7 @@ def test_update_files_replaces_only_managed_body(tmp_path: Path) -> None:
     assert target.read_text(encoding="utf-8") == "\n".join(
         [
             "before",
-            marker("github.com/rubykatzen/embedder@v0.2.0:fragment.md"),
+            marker("github.com/rubykatzen/embedder:fragment.md"),
             "new managed text",
             close_marker(),
             "after",
@@ -125,13 +120,14 @@ def test_apply_update_keeps_body_trailing_newline() -> None:
     )
 
 
-def test_check_blocks_caches_resolve_per_repository() -> None:
+def test_check_blocks_calls_resolve_per_block() -> None:
+    """resolve() is called once per block (no caching); it's a no-op for all ref types."""
     text = "\n".join(
         [
-            marker("github.com/rubykatzen/embedder@v0.1.0:first.md"),
+            marker("github.com/rubykatzen/embedder:first.md"),
             "old",
             close_marker(),
-            marker("github.com/rubykatzen/embedder@v0.1.0:second.md"),
+            marker("github.com/rubykatzen/embedder:second.md"),
             "old",
             close_marker(),
             "",
@@ -142,7 +138,7 @@ def test_check_blocks_caches_resolve_per_repository() -> None:
 
     check_blocks(blocks, [provider, LocalProvider()])
 
-    assert provider.resolve_calls == 1
+    assert provider.resolve_calls == 2
 
 
 def test_local_ref_is_always_current(tmp_path: Path) -> None:
@@ -153,7 +149,7 @@ def test_local_ref_is_always_current(tmp_path: Path) -> None:
     target.write_text(
         "\n".join(
             [
-                marker("local:fragment.md"),
+                marker("./fragment.md"),
                 "old content",
                 close_marker(),
                 "",
@@ -182,10 +178,10 @@ def test_cache_uses_correct_asset_per_block() -> None:
     """Two blocks from the same repo must not share each other's asset."""
     text = "\n".join(
         [
-            marker("github.com/rubykatzen/embedder@v0.1.0:first.md"),
+            marker("github.com/rubykatzen/embedder:first.md"),
             "old",
             close_marker(),
-            marker("github.com/rubykatzen/embedder@v0.1.0:second.md"),
+            marker("github.com/rubykatzen/embedder:second.md"),
             "old",
             close_marker(),
             "",
@@ -196,8 +192,8 @@ def test_cache_uses_correct_asset_per_block() -> None:
 
     results = check_blocks(blocks, registry)
 
-    assert results[0].latest_ref.render() == "github.com/rubykatzen/embedder@v0.2.0:first.md"
-    assert results[1].latest_ref.render() == "github.com/rubykatzen/embedder@v0.2.0:second.md"
+    assert results[0].latest_ref.render() == "github.com/rubykatzen/embedder:first.md"
+    assert results[1].latest_ref.render() == "github.com/rubykatzen/embedder:second.md"
 
 
 def test_local_ref_body_refreshed_on_update(tmp_path: Path) -> None:
@@ -207,7 +203,7 @@ def test_local_ref_body_refreshed_on_update(tmp_path: Path) -> None:
 
     target = tmp_path / "README.md"
     target.write_text(
-        "\n".join([marker("local:frag.md"), "old content", close_marker(), ""]),
+        "\n".join([marker("./frag.md"), "old content", close_marker(), ""]),
         encoding="utf-8",
     )
 
@@ -236,7 +232,7 @@ def test_local_only_skips_github_blocks(tmp_path: Path) -> None:
                 marker("github.com/rubykatzen/embedder@v0.1.0:fragment.md"),
                 "old github",
                 close_marker(),
-                marker("local:frag.md"),
+                marker("./frag.md"),
                 "old local",
                 close_marker(),
                 "",
@@ -259,7 +255,7 @@ def test_local_only_does_not_call_github_resolve(tmp_path: Path) -> None:
 
     target = tmp_path / "README.md"
     target.write_text(
-        "\n".join([marker("local:frag.md"), "old", close_marker(), ""]),
+        "\n".join([marker("./frag.md"), "old", close_marker(), ""]),
         encoding="utf-8",
     )
 

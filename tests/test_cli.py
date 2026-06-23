@@ -56,7 +56,7 @@ def test_check_missing_gh_returns_environment_error(
     target.write_text(
         "\n".join(
             [
-                marker("github.com/rubykatzen/embedder@v0.1.0:fragment.md"),
+                marker("github.com/rubykatzen/embedder:fragment.md"),
                 "managed",
                 close_marker(),
                 "",

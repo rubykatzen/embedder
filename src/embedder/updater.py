@@ -11,6 +11,7 @@ from embedder.blocks import (
     parse_blocks,
 )
 from embedder.providers import DEFAULT_PROVIDERS, AnyRef, Provider, get_provider
+from embedder.providers.local import LocalProvider
 
 
 @dataclass(frozen=True)
@@ -34,20 +35,11 @@ def check_blocks(
     providers: list[Provider] | None = None,
 ) -> list[CheckResult]:
     _providers = providers if providers is not None else DEFAULT_PROVIDERS
-    resolved_cache: dict[str, AnyRef] = {}
     results: list[CheckResult] = []
 
     for block in blocks:
         provider = get_provider(block.ref.render(), _providers)
-        key = provider.cache_key(block.ref)
-        if key is not None:
-            if key in resolved_cache:
-                latest = provider.resolve_cached(block.ref, resolved_cache[key])
-            else:
-                latest = provider.resolve(block.ref)
-                resolved_cache[key] = latest
-        else:
-            latest = provider.resolve(block.ref)
+        latest = provider.resolve(block.ref)
         results.append(CheckResult(block=block, latest_ref=latest))
 
     return results
@@ -81,7 +73,7 @@ def update_files(
 
         for check in checks:
             provider = get_provider(check.block.ref.render(), _providers)
-            if local_only and not provider.always_refresh(check.block.ref):
+            if local_only and not isinstance(provider, LocalProvider):
                 continue
             if not check.update_available and not provider.always_refresh(check.block.ref):
                 continue
@@ -89,7 +81,7 @@ def update_files(
             if new_body == check.block.body and not check.update_available:
                 continue
             updates.append(
-                BlockUpdate(block=check.block, new_ref=check.latest_ref, new_body=new_body)
+                BlockUpdate(block=check.block, new_ref=check.block.ref, new_body=new_body)
             )
             changed_checks.append(check)
 
