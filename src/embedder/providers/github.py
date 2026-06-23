@@ -13,7 +13,7 @@ _REF_RE = re.compile(
     r"^github\.com/"
     r"(?P<owner>[A-Za-z0-9_.-]+)/"
     r"(?P<repo>[A-Za-z0-9_.-]+)"
-    r"@(?P<tag>[^:\s]+)"
+    r"(?:@(?P<tag>[^:\s]+))?"
     r":(?P<asset>[^\s]+)$"
 )
 
@@ -22,18 +22,18 @@ _REF_RE = re.compile(
 class GitHubAssetRef:
     owner: str
     repo: str
-    tag: str
     asset: str
+    tag: str | None = None
 
     @property
     def repository(self) -> str:
         return f"{self.owner}/{self.repo}"
 
     def with_tag(self, tag: str) -> GitHubAssetRef:
-        return GitHubAssetRef(owner=self.owner, repo=self.repo, tag=tag, asset=self.asset)
+        return GitHubAssetRef(owner=self.owner, repo=self.repo, asset=self.asset, tag=tag)
 
     def render(self) -> str:
-        return f"github.com/{self.repository}@{self.tag}:{self.asset}"
+        return f"github.com/{self.repository}:{self.asset}"
 
 
 def parse_github_ref(raw: str) -> GitHubAssetRef:
@@ -46,8 +46,8 @@ def parse_github_ref(raw: str) -> GitHubAssetRef:
     return GitHubAssetRef(
         owner=match["owner"],
         repo=match["repo"],
-        tag=match["tag"],
         asset=asset,
+        tag=match.group("tag"),
     )
 
 
@@ -116,6 +116,8 @@ class GitHubProvider:
         return result.stdout
 
     def _download_asset(self, ref: GitHubAssetRef) -> str:
+        if ref.tag is None:
+            raise EmbedderError(f"Cannot download asset without a resolved tag: {ref.render()}")
         with tempfile.TemporaryDirectory(prefix="embedder-") as tmpdir:
             self.run(
                 [

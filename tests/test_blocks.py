@@ -50,8 +50,8 @@ def test_parse_multiple_blocks() -> None:
     blocks = parse_blocks(Path("README.md"), text)
 
     assert [block.ref.render() for block in blocks] == [
-        "github.com/a/b@v1:first.md",
-        "github.com/c/d@v2:second.md",
+        "github.com/a/b:first.md",
+        "github.com/c/d:second.md",
     ]
 
 

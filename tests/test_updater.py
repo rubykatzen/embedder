@@ -15,7 +15,9 @@ class FakeGitHubProvider:
     def __init__(self) -> None:
         self.latest: dict[str, str] = {"rubykatzen/embedder": "v0.2.0"}
         self.assets: dict[str, str] = {
-            "github.com/rubykatzen/embedder@v0.2.0:fragment.md": "new managed text\n",
+            "github.com/rubykatzen/embedder:fragment.md": "new managed text\n",
+            "github.com/rubykatzen/embedder:first.md": "first content\n",
+            "github.com/rubykatzen/embedder:second.md": "second content\n",
         }
         self.resolve_calls = 0
 
@@ -60,7 +62,7 @@ def test_check_blocks_marks_updates() -> None:
     results = check_blocks(blocks, fake_providers())
 
     assert len(results) == 1
-    assert results[0].latest_ref.render() == "github.com/rubykatzen/embedder@v0.2.0:fragment.md"
+    assert results[0].latest_ref.render() == "github.com/rubykatzen/embedder:fragment.md"
     assert results[0].update_available
 
 
@@ -86,7 +88,7 @@ def test_update_files_replaces_only_managed_body(tmp_path: Path) -> None:
     assert target.read_text(encoding="utf-8") == "\n".join(
         [
             "before",
-            marker("github.com/rubykatzen/embedder@v0.2.0:fragment.md"),
+            marker("github.com/rubykatzen/embedder:fragment.md"),
             "new managed text",
             close_marker(),
             "after",
@@ -117,7 +119,7 @@ def test_apply_update_keeps_body_trailing_newline() -> None:
 
     assert updated == "\n".join(
         [
-            marker("github.com/rubykatzen/embedder@v0.2.0:fragment.md"),
+            marker("github.com/rubykatzen/embedder:fragment.md"),
             "new",
             close_marker(),
             "",
@@ -196,8 +198,8 @@ def test_cache_uses_correct_asset_per_block() -> None:
 
     results = check_blocks(blocks, registry)
 
-    assert results[0].latest_ref.render() == "github.com/rubykatzen/embedder@v0.2.0:first.md"
-    assert results[1].latest_ref.render() == "github.com/rubykatzen/embedder@v0.2.0:second.md"
+    assert results[0].latest_ref.render() == "github.com/rubykatzen/embedder:first.md"
+    assert results[1].latest_ref.render() == "github.com/rubykatzen/embedder:second.md"
 
 
 def test_local_ref_body_refreshed_on_update(tmp_path: Path) -> None:

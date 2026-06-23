@@ -23,7 +23,7 @@ def test_scan_prints_blocks(tmp_path: Path, capsys) -> None:
     assert main(["scan", str(tmp_path)]) == int(ExitCode.OK)
 
     captured = capsys.readouterr()
-    assert "AGENTS.md:3 github.com/rubykatzen/embedder@v0.1.0:fragment.md" in captured.out
+    assert "AGENTS.md:3 github.com/rubykatzen/embedder:fragment.md" in captured.out
 
 
 def test_scan_json(tmp_path: Path, capsys) -> None:

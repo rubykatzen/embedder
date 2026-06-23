@@ -89,7 +89,7 @@ def update_files(
             if new_body == check.block.body and not check.update_available:
                 continue
             updates.append(
-                BlockUpdate(block=check.block, new_ref=check.latest_ref, new_body=new_body)
+                BlockUpdate(block=check.block, new_ref=check.block.ref, new_body=new_body)
             )
             changed_checks.append(check)
 
