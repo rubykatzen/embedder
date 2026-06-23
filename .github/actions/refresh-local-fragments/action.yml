@@ -1,5 +1,5 @@
 name: Refresh local fragments
-description: "Re-embed all local: fragment refs in the workspace without bumping external dependencies."
+description: Re-embed all local fragment refs in the workspace without bumping external dependencies.
 inputs:
   paths:
     description: Files or directories to scan. Defaults to the current directory.
@@ -13,6 +13,5 @@ runs:
       env:
         EMBEDDER_PATHS: ${{ inputs.paths }}
       run: |
-        pip install -e "${{ github.action_path }}/../../.."
         read -ra paths <<< "$EMBEDDER_PATHS"
         embedder update "${paths[@]}" --local-only

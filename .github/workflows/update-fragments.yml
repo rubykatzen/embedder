@@ -11,12 +11,11 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v7
+      - uses: ./.github/actions/install-embedder
       - name: Run embedder update
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          pip install -e .
-          embedder update .
+        run: embedder update .
       - name: Detect changes
         id: diff
         run: |

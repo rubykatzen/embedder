@@ -1,8 +1,8 @@
 name: Install embedder
-description: Install embedder from this repository's source tree.
+description: Install embedder from the rubykatzen/embedder git repository.
 runs:
   using: composite
   steps:
     - name: Install
       shell: bash
-      run: pip install -e "${{ github.action_path }}/../../.."
+      run: pip install "git+https://github.com/rubykatzen/embedder.git@${{ github.action_ref }}"
