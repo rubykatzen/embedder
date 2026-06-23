@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+## [v0.2.0] - 2026-06-23
+
+- fix: update dependabot.yml marker to ./ local ref format
+- fix: install embedder from local source in prepare-release
+- fix: enable install-embedder and push-release-branch steps
+- fix: sort imports in test_updater.py (#32)
+- chore: comment out release steps pending fix
+- chore: remove bump-shared-workflow-version action
+- Update prepare-release.yml
+- chore: pin install-embedder to v0.1
+- refactor: normalize action composition for embedder install
+- chore: update embedded fragments (#22)
+- chore: switch to baseline lint-shared workflow v0.7 (#31)
+- feat: support git refs and file paths via GitHub contents API (#30)
+
 ## [v0.1.3] - 2026-06-22
 
 - fix: use explicit repo ref for open-fragments-pr in shared workflow
