@@ -14,11 +14,9 @@ _REF_RE = re.compile(
     r"^github\.com/"
     r"(?P<owner>[A-Za-z0-9_.-]+)/"
     r"(?P<repo>[A-Za-z0-9_.-]+)"
-    r"(?:@(?P<tag>[^:\s]+))?"
+    r"@(?P<tag>[^:\s]+)"
     r":(?P<asset>[^\s]+)$"
 )
-
-_SEMVER_RE = re.compile(r"^v?\d+(\.\d+)*$")
 
 
 @dataclass(frozen=True)
@@ -26,22 +24,16 @@ class GitHubAssetRef:
     owner: str
     repo: str
     asset: str
-    tag: str | None = None
+    tag: str
 
     @property
     def repository(self) -> str:
         return f"{self.owner}/{self.repo}"
 
-    @property
-    def is_pinned(self) -> bool:
-        return self.tag is not None and bool(_SEMVER_RE.match(self.tag))
-
     def with_tag(self, tag: str) -> GitHubAssetRef:
         return GitHubAssetRef(owner=self.owner, repo=self.repo, asset=self.asset, tag=tag)
 
     def render(self) -> str:
-        if self.tag is None:
-            return f"github.com/{self.repository}:{self.asset}"
         return f"github.com/{self.repository}@{self.tag}:{self.asset}"
 
 
@@ -59,7 +51,7 @@ def parse_github_ref(raw: str) -> GitHubAssetRef:
         owner=match["owner"],
         repo=match["repo"],
         asset=asset,
-        tag=match.group("tag"),
+        tag=match["tag"],
     )
 
 
@@ -78,13 +70,8 @@ class GitHubProvider:
         return parse_github_ref(raw)
 
     def resolve(self, ref: GitHubAssetRef) -> GitHubAssetRef:
-        # Validate gh is available for any GitHub ref, then return as-is.
-        # Tagless and branch refs are handled via always_refresh + fetch.
         self.require()
         return ref
-
-    def always_refresh(self, ref: GitHubAssetRef) -> bool:
-        return not ref.is_pinned
 
     def fetch(self, ref: GitHubAssetRef, base_dir: Path) -> str:
         return self._fetch_file(ref)
@@ -116,18 +103,9 @@ class GitHubProvider:
     def auth_ok(self) -> bool:
         return self.run(["auth", "status"], check=False).returncode == 0
 
-    def _latest_tag(self, ref: GitHubAssetRef) -> str:
-        result = self.run(
-            ["api", f"repos/{ref.repository}/releases/latest", "--jq", ".tag_name"]
-        )
-        if not result.stdout or result.stdout == "null":
-            raise EmbedderError(f"Could not resolve latest release for {ref.repository}")
-        return result.stdout
-
     def _fetch_file(self, ref: GitHubAssetRef) -> str:
-        tag = ref.tag if ref.tag is not None else self._latest_tag(ref)
         encoded_asset = quote(ref.asset, safe="/")
-        encoded_tag = quote(tag, safe="")
+        encoded_tag = quote(ref.tag, safe="")
         result = self.run(
             [
                 "api",
