@@ -13,10 +13,16 @@ updates:
       interval: daily
       time: "22:00"
       timezone: "Europe/Berlin"
-# /embedder
   - package-ecosystem: pip
     directory: /
     schedule:
       interval: daily
       time: "22:00"
       timezone: "Europe/Berlin"
+  - package-ecosystem: bundler
+    directory: /
+    schedule:
+      interval: daily
+      time: "22:00"
+      timezone: "Europe/Berlin"
+# /embedder
