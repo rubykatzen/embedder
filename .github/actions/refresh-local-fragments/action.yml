@@ -10,8 +10,4 @@ runs:
   steps:
     - name: Refresh local fragments
       shell: bash
-      env:
-        EMBEDDER_PATHS: ${{ inputs.paths }}
-      run: |
-        read -ra paths <<< "$EMBEDDER_PATHS"
-        embedder update "${paths[@]}" --local-only
+      run: embedder update ${{ inputs.paths }} --local-only
