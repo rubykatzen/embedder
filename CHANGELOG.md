@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [v0.2.3] - 2026-06-24
+
+- chore: add pre-commit linter and update Copilot emoji (#39)
+- chore(deps): bump https://github.com/rubykatzen/baseline (#35)
+
 ## [v0.2.2] - 2026-06-24
 
 - Update dependabot.yml
