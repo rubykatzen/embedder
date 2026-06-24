@@ -27,9 +27,6 @@ class LocalProvider:
     def resolve(self, ref: LocalRef) -> LocalRef:
         return ref
 
-    def always_refresh(self, ref: LocalRef) -> bool:
-        return True
-
     def fetch(self, ref: LocalRef, base_dir: Path) -> str:
         resolved_base = base_dir.resolve()
         target = (base_dir / ref.path).resolve()

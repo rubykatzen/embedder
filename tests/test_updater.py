@@ -30,9 +30,6 @@ class FakeGitHubProvider:
         self.resolve_calls += 1
         return ref
 
-    def always_refresh(self, ref: GitHubAssetRef) -> bool:
-        return not ref.is_pinned
-
     def fetch(self, ref: GitHubAssetRef, base_dir: Path) -> str:
         return self.contents[(ref.repository, ref.asset)]
 
@@ -41,32 +38,13 @@ def fake_providers() -> list[Provider]:
     return [FakeGitHubProvider(), LocalProvider()]
 
 
-def test_check_blocks_tagless_ref_not_update_pending() -> None:
-    """Auto-latest refs are always-refresh; check() doesn't report them as pending updates."""
-    text = "\n".join(
-        [
-            marker("github.com/rubykatzen/embedder:fragment.md"),
-            "old",
-            close_marker(),
-            "",
-        ]
-    )
-    blocks = parse_blocks(Path("AGENTS.md"), text)
-
-    results = check_blocks(blocks, fake_providers())
-
-    assert len(results) == 1
-    assert not results[0].update_available
-    assert results[0].latest_ref.render() == "github.com/rubykatzen/embedder:fragment.md"
-
-
 def test_update_files_replaces_only_managed_body(tmp_path: Path) -> None:
     target = tmp_path / "AGENTS.md"
     target.write_text(
         "\n".join(
             [
                 "before",
-                marker("github.com/rubykatzen/embedder:fragment.md"),
+                marker("github.com/rubykatzen/embedder@v0.1.0:fragment.md"),
                 "old managed text",
                 close_marker(),
                 "after",
@@ -82,7 +60,7 @@ def test_update_files_replaces_only_managed_body(tmp_path: Path) -> None:
     assert target.read_text(encoding="utf-8") == "\n".join(
         [
             "before",
-            marker("github.com/rubykatzen/embedder:fragment.md"),
+            marker("github.com/rubykatzen/embedder@v0.1.0:fragment.md"),
             "new managed text",
             close_marker(),
             "after",
@@ -125,10 +103,10 @@ def test_check_blocks_calls_resolve_per_block() -> None:
     """resolve() is called once per block (no caching); it's a no-op for all ref types."""
     text = "\n".join(
         [
-            marker("github.com/rubykatzen/embedder:first.md"),
+            marker("github.com/rubykatzen/embedder@v0.1.0:first.md"),
             "old",
             close_marker(),
-            marker("github.com/rubykatzen/embedder:second.md"),
+            marker("github.com/rubykatzen/embedder@v0.1.0:second.md"),
             "old",
             close_marker(),
             "",
@@ -179,10 +157,10 @@ def test_cache_uses_correct_asset_per_block() -> None:
     """Two blocks from the same repo must not share each other's asset."""
     text = "\n".join(
         [
-            marker("github.com/rubykatzen/embedder:first.md"),
+            marker("github.com/rubykatzen/embedder@v0.1.0:first.md"),
             "old",
             close_marker(),
-            marker("github.com/rubykatzen/embedder:second.md"),
+            marker("github.com/rubykatzen/embedder@v0.1.0:second.md"),
             "old",
             close_marker(),
             "",
@@ -193,8 +171,8 @@ def test_cache_uses_correct_asset_per_block() -> None:
 
     results = check_blocks(blocks, registry)
 
-    assert results[0].latest_ref.render() == "github.com/rubykatzen/embedder:first.md"
-    assert results[1].latest_ref.render() == "github.com/rubykatzen/embedder:second.md"
+    assert results[0].latest_ref.render() == "github.com/rubykatzen/embedder@v0.1.0:first.md"
+    assert results[1].latest_ref.render() == "github.com/rubykatzen/embedder@v0.1.0:second.md"
 
 
 def test_local_ref_body_refreshed_on_update(tmp_path: Path) -> None:

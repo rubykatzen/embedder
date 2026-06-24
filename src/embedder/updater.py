@@ -75,10 +75,8 @@ def update_files(
             provider = get_provider(check.block.ref.render(), _providers)
             if local_only and not isinstance(provider, LocalProvider):
                 continue
-            if not check.update_available and not provider.always_refresh(check.block.ref):
-                continue
             new_body = provider.fetch(check.latest_ref, _base_dir)
-            if new_body == check.block.body and not check.update_available:
+            if new_body == check.block.body:
                 continue
             updates.append(
                 BlockUpdate(block=check.block, new_ref=check.block.ref, new_body=new_body)
