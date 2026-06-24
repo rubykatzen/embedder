@@ -25,13 +25,7 @@ jobs:
       - uses: ./.github/actions/upload-fragments
         with:
           release-tag: v${{ steps.meta.outputs.version }}
-  update-tap:
-    needs: publish
-    runs-on: ubuntu-latest
-    steps:
       - name: Trigger Homebrew tap update
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-        run: |
-          gh workflow run update-formulas.yml --repo rubykatzen/homebrew-tap
-          gh workflow run update-fragments.yml --repo rubykatzen/homebrew-tap
+        run: gh workflow run update-formulas.yml --repo rubykatzen/homebrew-tap
