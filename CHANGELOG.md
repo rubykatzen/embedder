@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [v0.2.1] - 2026-06-24
+
+- refactor: pass paths directly instead of through env vars
+- chore: bump embedder actions to v0.2 in update-fragments-shared
+- chore: use install-embedder action in prepare-release
+- chore: bump install-embedder to v0.2
+
 ## [v0.2.0] - 2026-06-23
 
 - fix: update dependabot.yml marker to ./ local ref format
