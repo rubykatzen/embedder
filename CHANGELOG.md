@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [v0.2.5] - 2026-06-24
+
+- chore: normalize workflows
+
 ## [v0.2.4] - 2026-06-24
 
 - fix: commit local fragment updates in refresh-local-fragments action (#41)
