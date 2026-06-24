@@ -19,7 +19,7 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v7
-      - uses: rubykatzen/embedder/.github/actions/install-embedder@v0.1
+      - uses: rubykatzen/embedder/.github/actions/install-embedder@v0.2
       - name: Run embedder update
         env:
           GH_TOKEN: ${{ secrets.token || github.token }}
@@ -37,4 +37,4 @@ jobs:
           fi
       - name: Open pull request
         if: steps.diff.outputs.changed == 'true'
-        uses: rubykatzen/embedder/.github/actions/open-fragments-pr@v0.1
+        uses: rubykatzen/embedder/.github/actions/open-fragments-pr@v0.2
