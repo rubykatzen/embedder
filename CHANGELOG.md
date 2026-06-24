@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [v0.2.2] - 2026-06-24
+
+- Update dependabot.yml
+- chore: change dependabot schedule time to 10:00 Berlin
+- chore: add all ecosystems to dependabot fragment
+- chore: update dependabot fragment to common config (daily, Berlin timezone)
+
 ## [v0.2.1] - 2026-06-24
 
 - refactor: pass paths directly instead of through env vars
