@@ -23,7 +23,7 @@ jobs:
       - name: Run embedder update
         env:
           GH_TOKEN: ${{ secrets.token || github.token }}
-        run: embedder update ${{ inputs.paths }}
+        run: embedder update "${{ inputs.paths }}"
       - name: Detect changes
         id: diff
         run: |

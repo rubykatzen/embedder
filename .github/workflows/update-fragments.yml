@@ -1,7 +1,7 @@
 name: Update embedded fragments
 on:
   schedule:
-    - cron: '0 8 * * *'  # 10:00 Berlin (CEST, UTC+2)
+    - cron: '0 8 * * *'
   workflow_dispatch:
 jobs:
   update:
