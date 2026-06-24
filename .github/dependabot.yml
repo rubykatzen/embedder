@@ -1,12 +1,22 @@
 # embedder ./fragments/dependabot.yaml
 version: 2
 updates:
-  - package-ecosystem: pip
-    directory: "/"
-    schedule:
-      interval: weekly
   - package-ecosystem: github-actions
-    directory: "/"
+    directory: /
     schedule:
-      interval: weekly
+      interval: daily
+      time: "22:00"
+      timezone: "Europe/Berlin"
+  - package-ecosystem: pre-commit
+    directory: /
+    schedule:
+      interval: daily
+      time: "22:00"
+      timezone: "Europe/Berlin"
 # /embedder
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: daily
+      time: "22:00"
+      timezone: "Europe/Berlin"
