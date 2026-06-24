@@ -17,7 +17,7 @@ Use the emoji to identify the agent:
 - `🤖` Codex
 - `🤔` Claude Code
 - `🖊️` Cursor
-- `🧑‍✈️` GitHub Copilot
+- `🐱` GitHub Copilot
 - `🧩` unknown or other agent
 
 This applies to chat replies, PR comments, review comments, issue comments,
