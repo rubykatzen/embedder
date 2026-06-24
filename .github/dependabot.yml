@@ -25,10 +25,4 @@ updates:
       interval: daily
       time: "10:00"
       timezone: "Europe/Berlin"
-  - package-ecosystem: swift
-    directory: /
-    schedule:
-      interval: daily
-      time: "10:00"
-      timezone: "Europe/Berlin"
 # /embedder
