@@ -39,8 +39,7 @@ jobs:
       - uses: rubykatzen/releaser/.github/actions/bump-pyproject-version@v0.5
         with:
           version: ${{ inputs.version }}
-      - run: pip install -e .
-        shell: bash
+      - uses: ./.github/actions/install-embedder
       - uses: ./.github/actions/refresh-local-fragments
       - uses: rubykatzen/releaser/.github/actions/push-release-branch@v0.5
         with:
