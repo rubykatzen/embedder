@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [v0.2.4] - 2026-06-24
+
+- fix: commit local fragment updates in refresh-local-fragments action (#41)
+
 ## [v0.2.3] - 2026-06-24
 
 - chore: add pre-commit linter and update Copilot emoji (#39)
