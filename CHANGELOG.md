@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [v0.2.7] - 2026-06-25
+
+- chore(deps): bump https://github.com/rubykatzen/baseline (#43)
+
+## [v0.2.6] - 2026-06-24
+
+- feat: remove pinned/always_refresh logic and require explicit ref tags
+
 ## [v0.2.5] - 2026-06-24
 
 - chore: normalize workflows
